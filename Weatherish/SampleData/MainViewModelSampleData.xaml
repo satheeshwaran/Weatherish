@@ -1,0 +1,25 @@
+﻿<vm:MainViewModel
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="clr-namespace:Weatherish.ViewModels"
+    SampleProperty="Sample Text Property Value">
+
+    <vm:MainViewModel.dailyForecastItems>
+        <vm:ItemViewModel dayTime="08:00 AM" weatherDescription="Clear" temperature="29°C" temperatureMinMaxValue="23°C/12°C" weatherImageURL="/Assets/WeatherIcons/weather-clear@2x.png"/>
+        <vm:ItemViewModel dayTime="09:00 AM" weatherDescription="Rain" temperature="29.5°C" temperatureMinMaxValue="23°C/12°C" weatherImageURL="/Assets/WeatherIcons/weather-rain@2x.png"/>
+        <vm:ItemViewModel dayTime="12:00 PM" weatherDescription="Shower" temperature="28.5°C" temperatureMinMaxValue="23°C/12°C" weatherImageURL="/Assets/WeatherIcons/weather-shower@2x.png"/>
+        <vm:ItemViewModel dayTime="15:00 PM" weatherDescription="Snow" temperature="27.8°C" temperatureMinMaxValue="23°C/12°C" weatherImageURL="/Assets/WeatherIcons/weather-snow@2x.png"/>
+        <vm:ItemViewModel dayTime="19:00 PM" weatherDescription="Thunder Storm" temperature="26.5°C" temperatureMinMaxValue="23°C/12°C" weatherImageURL="/Assets/WeatherIcons/weather-tstorm@2x.png"/>
+        <vm:ItemViewModel dayTime="21:00 PM" weatherDescription="Scattered Clouds" temperature="24.5°C" temperatureMinMaxValue="23°C/12°C" weatherImageURL="/Assets/WeatherIcons/weather-scattered@2x.png"/>
+    </vm:MainViewModel.dailyForecastItems>
+
+    <vm:MainViewModel.weeklyForecastItems>
+        <vm:ItemViewModel dayTime="08:00 AM" weatherDescription="Clear" temperature="29°C" temperatureMinMaxValue="23°C/12°C" weatherImageURL="/Assets/WeatherIcons/weather-clear@2x.png"/>
+        <vm:ItemViewModel dayTime="09:00 AM" weatherDescription="Rain" temperature="29.5°C" temperatureMinMaxValue="23°C/12°C" weatherImageURL="/Assets/WeatherIcons/weather-rain@2x.png"/>
+        <vm:ItemViewModel dayTime="12:00 PM" weatherDescription="Shower" temperature="28.5°C" temperatureMinMaxValue="23°C/12°C" weatherImageURL="/Assets/WeatherIcons/weather-shower@2x.png"/>
+        <vm:ItemViewModel dayTime="15:00 PM" weatherDescription="Snow" temperature="27.8°C" temperatureMinMaxValue="23°C/12°C" weatherImageURL="/Assets/WeatherIcons/weather-snow@2x.png"/>
+        <vm:ItemViewModel dayTime="19:00 PM" weatherDescription="Thunder Storm" temperature="26.5°C" temperatureMinMaxValue="23°C/12°C" weatherImageURL="/Assets/WeatherIcons/weather-tstorm@2x.png"/>
+        <vm:ItemViewModel dayTime="21:00 PM" weatherDescription="Scattered Clouds" temperature="24.5°C" temperatureMinMaxValue="23°C/12°C" weatherImageURL="/Assets/WeatherIcons/weather-scattered@2x.png"/>
+    </vm:MainViewModel.weeklyForecastItems>
+
+</vm:MainViewModel>
