@@ -16,7 +16,7 @@
     shell:SystemTray.IsVisible="False">
 
     <!--LayoutRoot is the root grid where all page content is placed-->
-    <Grid x:Name="LayoutRoot" Background="Transparent">
+    <Grid x:Name="LayoutRoot" Background="Transparent" >
 
         <!-- LOCALIZATION NOTE:
             To localize the displayed strings copy their values to appropriately named
@@ -40,7 +40,7 @@
         <!--Panorama control-->
         <phone:Panorama Loaded="Panorama_Loaded" Margin="0,0,10,0" FontSize="20" Name="weatherishPanorma">
             <phone:Panorama.Title>
-                <TextBlock Text="Loading..." FontSize="80" Margin="20,50,0,0" Name="locationTextBlock"/>
+                <TextBlock Text="Loading..." FontSize="80" Margin="20,40,0,0" Name="locationTextBlock" Padding="0,0,0,10"/>
             </phone:Panorama.Title>
 
             <phone:PanoramaItem>
@@ -48,7 +48,7 @@
                 <phone:LongListSelector Margin="0,-38,-22,2" ItemsSource="{Binding dailyForecastItems}" Name="longList">
                     <phone:LongListSelector.ListHeaderTemplate>
                         <DataTemplate>
-                            <Grid Margin="12,0,0,38" Name="grid">
+                            <Grid Margin="12,0,-40,25" Name="grid">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="*"/>
@@ -56,14 +56,28 @@
                                 <Image Source="/Assets/WeatherIcons/weather-clear@2x.png" Width="60" Height="60" Canvas.ZIndex="4" HorizontalAlignment="Left" Loaded="Image_Loaded"></Image>
                                 <TextBlock Name="currentTemperature"  Text="23°"
                                            Style="{StaticResource PanoramaItemHeaderTextStyle}"
-                                           Grid.Row="0" FontSize="48" Margin="70,0,0,0" Loaded="textBoxLoaded"  />
+                                           Grid.Row="0" FontSize="48" Margin="80,0,0,0" Loaded="textBoxLoaded" Width="100" HorizontalAlignment="Left"  />
                                 <TextBlock Name="currentTemperatureCondtion"  Text="Clear"
                                            Style="{StaticResource PanoramaItemHeaderTextStyle}"
                                            Grid.Row="0" Grid.Column="1" FontSize="40" Margin="200,0,0,0" Loaded="currentTemperatureCondtion_Loaded" HorizontalAlignment="Left" VerticalAlignment="Bottom" />
+                                <TextBlock Name="temperatureRangeBlock"
+                                           Text="Temp   3°~6°"
+                                           Style="{StaticResource PanoramaItemHeaderTextStyle}"
+                                           Grid.Row="1" FontSize="25" Margin="0,25,0,62" VerticalAlignment="Center" HorizontalAlignment="Left" Loaded="temperatureRangeBlock_Loaded" Width="156" Padding="0,0,0,10"/>
+                                <Image Source="/Assets/WeatherIcons/temperature-32.png" Width="32" Height="32" Canvas.ZIndex="4" HorizontalAlignment="Left" Grid.Row="1" Margin="175,8,0,57"></Image>
+                                <TextBlock Name="humidityBlock"
+                                           Text="60%"
+                                           Style="{StaticResource PanoramaItemHeaderTextStyle}"
+                                           Grid.Row="1" FontSize="25" Margin="210,25,0,68" VerticalAlignment="Center" HorizontalAlignment="Left" Loaded="humidityBlock_Loaded" Width="72"/>
+                                <Image Source="/Assets/WeatherIcons/wind-turbine-32.png" Width="32" Height="32" Canvas.ZIndex="4" HorizontalAlignment="Left" Grid.Row="1" Margin="290,8,0,57"></Image>
+                                <TextBlock Name="windSpeedTextBlock"
+                                           Text="60 kph"
+                                           Style="{StaticResource PanoramaItemHeaderTextStyle}"
+                                           Grid.Row="1" FontSize="25" Margin="328,30,0,70" VerticalAlignment="Center" HorizontalAlignment="Left" Loaded="windSpeedTextBlock_Loaded"/>
                                 <TextBlock Name="hourlyForecastTextBlock"
                                            Text="Hourly Forecast"
                                            Style="{StaticResource PanoramaItemHeaderTextStyle}"
-                                           Grid.Row="1" FontSize="36" Margin="0,20,0,0" VerticalAlignment="Center" HorizontalAlignment="Left" Loaded="hourlyForecastTextBlock_Loaded"/>
+                                           Grid.Row="2  " FontSize="36" Margin="0,60,0,0" VerticalAlignment="Center" HorizontalAlignment="Left" Loaded="hourlyForecastTextBlock_Loaded"/>
                             </Grid>
                         </DataTemplate>
 

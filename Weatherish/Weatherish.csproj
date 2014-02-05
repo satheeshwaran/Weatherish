@@ -133,6 +133,7 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Assets\WeatherIcons\temperature-32.png" />
     <Content Include="Assets\WeatherIcons\weather-broken%402x.png" />
     <Content Include="Assets\WeatherIcons\weather-broken.png" />
     <Content Include="Assets\WeatherIcons\weather-clear%402x.png" />
@@ -157,6 +158,7 @@
     <Content Include="Assets\WeatherIcons\weather-snow.png" />
     <Content Include="Assets\WeatherIcons\weather-tstorm%402x.png" />
     <Content Include="Assets\WeatherIcons\weather-tstorm.png" />
+    <Content Include="Assets\WeatherIcons\wind-turbine-32.png" />
     <Resource Include="Assets\PanoramaBackground1.png" />
     <Content Include="Assets\AlignmentGrid.png" />
     <Content Include="Assets\ApplicationIcon.png">

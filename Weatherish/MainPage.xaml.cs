@@ -24,6 +24,9 @@ namespace Weatherish
         public TextBlock currentTemperatureCondtion;
         public TextBlock hourlyForecastTextBlock;
         public TextBlock thisWeekForecastTitle;
+        public TextBlock currentHumidityTextBlock;
+        public TextBlock currentTemperatureRangeBlock;
+        public TextBlock currentWindSpeedBlock;
         public Image currentWeatherIcon;
         public string dailyForecastData;
         public string weeklyForecastData;
@@ -121,6 +124,9 @@ namespace Weatherish
                 currentTemperatureBlock.Text = temp.ToString() + "°C ";
                 currentTemperatureCondtion.Text = apiDataJson.weather[0].description;
                 hourlyForecastTextBlock.Text = DateTime.Now.ToString("dd MMM yyyy") + "  Hourly Forecast";
+                currentTemperatureRangeBlock.Text = "Temp   "+ apiDataJson.main.temp_min.ToString()+ "°~"+apiDataJson.main.temp_max.ToString() + "°";
+                currentWindSpeedBlock.Text = apiDataJson.wind.speed.ToString() + " Kph";
+                currentHumidityTextBlock.Text = apiDataJson.main.humidity.ToString() + "%";
 
                 var currentCulture = CultureInfo.CurrentCulture;
                 var weekNo = currentCulture.Calendar.GetWeekOfYear(
@@ -434,6 +440,21 @@ namespace Weatherish
         private void Image_Loaded(object sender, RoutedEventArgs e)
         {
             currentWeatherIcon = (Image)sender;
+        }
+
+        private void windSpeedTextBlock_Loaded(object sender, RoutedEventArgs e)
+        {
+            currentWindSpeedBlock = (TextBlock)sender;
+        }
+
+        private void humidityBlock_Loaded(object sender, RoutedEventArgs e)
+        {
+            currentHumidityTextBlock = (TextBlock)sender;
+        }
+
+        private void temperatureRangeBlock_Loaded(object sender, RoutedEventArgs e)
+        {
+            currentTemperatureRangeBlock = (TextBlock)sender;
         }   
 
 
