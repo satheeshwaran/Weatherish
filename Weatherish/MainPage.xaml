@@ -115,12 +115,8 @@
                                 </Grid.RowDefinitions>
                                 <TextBlock Name="thisWeekHeaderTitle"  Text="This Week"
                                            Style="{StaticResource PanoramaItemHeaderTextStyle}"
-                                           Grid.Row="0" FontSize="48" Margin="10,0,0,0" />
-                                <TextBlock Name="weeklyForecastTextBlock"
-                                           Text="Weekly Forecast"
-                                           Style="{StaticResource PanoramaItemHeaderTextStyle}"
-                                           Grid.Row="1" FontSize="36" Margin="10,20,0,0" VerticalAlignment="Center" HorizontalAlignment="Left" Loaded="thisWeekForecastTitle_Loaded"/>
-                            </Grid>
+                                           Grid.Row="0" FontSize="48" Margin="10,0,0,0" Loaded="thisWeekHeaderTitle_Loaded"/>
+                             </Grid>
                         </DataTemplate>
 
                     </phone:LongListSelector.ListHeaderTemplate>

@@ -103,6 +103,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>AppResources.resx</DependentUpon>
     </Compile>
+    <Compile Include="TileHelper.cs" />
     <Compile Include="ViewModels\ItemViewModel.cs" />
     <Compile Include="ViewModels\MainViewModel.cs" />
   </ItemGroup>
@@ -133,6 +134,8 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Assets\Apollo8.jpg" />
+    <Content Include="Assets\Background.jpg" />
     <Content Include="Assets\WeatherIcons\temperature-32.png" />
     <Content Include="Assets\WeatherIcons\weather-broken%402x.png" />
     <Content Include="Assets\WeatherIcons\weather-broken.png" />
@@ -203,6 +206,15 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Bin\" />
+  </ItemGroup>
+  <ItemGroup>
+    <WCFMetadata Include="Service References\" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\WeatherUpdaterAgent\WeatherUpdaterAgent.csproj">
+      <Project>{01BF7766-3CF3-4364-990E-18098DAEADE6}</Project>
+      <Name>WeatherUpdaterAgent</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Microsoft\$(TargetFrameworkIdentifier)\$(TargetFrameworkVersion)\Microsoft.$(TargetFrameworkIdentifier).$(TargetFrameworkVersion).Overrides.targets" />
   <Import Project="$(MSBuildExtensionsPath)\Microsoft\$(TargetFrameworkIdentifier)\$(TargetFrameworkVersion)\Microsoft.$(TargetFrameworkIdentifier).CSharp.targets" />

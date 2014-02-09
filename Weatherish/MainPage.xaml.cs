@@ -14,11 +14,27 @@ using Windows.Devices.Geolocation;
 using System.Device.Location;
 using Newtonsoft.Json;
 using System.Globalization;
+using Microsoft.Phone.Scheduler;
+using Windows.Phone.System.UserProfile;
+using System.Threading;
 
 namespace Weatherish
 {
     public partial class MainPage : PhoneApplicationPage
     {
+
+        PeriodicTask periodicTask;
+
+        ResourceIntensiveTask resourceIntensiveTask;
+
+        string periodicTaskName = "WeatherUpdaterAgent";
+        string resourceIntensiveTaskName = "ResourceIntensiveAgent";
+        public bool agentsAreEnabled = true;
+
+        // Variables for our periodic task to update the lock screen
+        private PeriodicTask _periodicTask;
+        private const string PeriodicTaskName = "WeatherUpdaterAgent";
+
         public GeoCoordinate currentCoordinate;
         public TextBlock currentTemperatureBlock;
         public TextBlock currentTemperatureCondtion;
@@ -34,6 +50,12 @@ namespace Weatherish
         public string currentPlace;
         public string currentCountry;
         private string flickrApiKey = "8244c11a9c3b02b45c127873ac225958";
+        private readonly TileHelper _tileHelper = new TileHelper();
+        private bool _isLockScreenProvider;
+        private bool _agentsAreEnabled;
+
+        
+
 
         // Constructor
         public MainPage()
@@ -42,6 +64,69 @@ namespace Weatherish
 
             // Set the data context of the listbox control to the sample data
             DataContext = App.ViewModel;
+
+        }
+
+
+        private async void LockHelper(Uri backgroundImageUri, string backgroundAction)
+        {
+            try
+            {
+                switch (backgroundAction)
+                {
+                    case "allow":
+                        {
+                            await LockScreenManager.RequestAccessAsync();
+                            _isLockScreenProvider = LockScreenManager.IsProvidedByCurrentApplication;
+                            if (_isLockScreenProvider)
+                            {
+                                
+                            }
+                            else MessageBox.Show("You said no, so I can't update your lock screen.");
+                        }
+                        break;
+                    case "set":
+                    case "pick":
+                    case "reset":
+                        {
+                            await LockScreenManager.RequestAccessAsync();
+                            _isLockScreenProvider = LockScreenManager.IsProvidedByCurrentApplication;
+                            if (_isLockScreenProvider)
+                            {
+                                LockScreen.SetImageUri(backgroundImageUri);
+                                Console.WriteLine("New current image set to {0}", backgroundImageUri);
+                            }
+                            else
+                            {
+                                MessageBox.Show("You said no, so I can't update your lock screen.");
+                            }
+
+                            // Obtain a reference to the period task, if one exists
+                            _periodicTask = ScheduledActionService.Find(PeriodicTaskName) as PeriodicTask;
+
+                            // If the task already exists and background agents are enabled for the
+                            // application, you must remove the task and then add it again to update 
+                            // the schedule
+                            if (_periodicTask != null)
+                            {
+                                RemoveAgent(PeriodicTaskName);
+                            }
+
+                            // Variable for tracking enabled status of background agents for this app.
+                            _agentsAreEnabled = false;
+                        }
+                        break;
+                    case "check":
+                        {
+                            _isLockScreenProvider = LockScreenManager.IsProvidedByCurrentApplication;
+                        }
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+            }
         }
 
         // Load data for the ViewModel Items
@@ -51,9 +136,26 @@ namespace Weatherish
             {
                 App.ViewModel.LoadData(dailyForecastData);
             }
+
+
+            periodicTask = ScheduledActionService.Find(periodicTaskName) as PeriodicTask;
+
+            if (periodicTask != null)
+            {
+            }
+
+            resourceIntensiveTask = ScheduledActionService.Find(periodicTaskName) as ResourceIntensiveTask;
+            if (resourceIntensiveTask != null)
+            {
+            }
+
         }
         void MainPage_Loaded(object sender, RoutedEventArgs e)
         {
+
+            LockHelper(new Uri("", UriKind.RelativeOrAbsolute), "allow");
+            Thread.Sleep(500);
+            StartPeriodicAgent();
             getLocation();
         }
 
@@ -67,20 +169,81 @@ namespace Weatherish
             weatherishPanorma.Background = b;
         }
 
-        private async void getDailyForecastData()
+        public void StartPeriodicAgent()
         {
-            HttpClient weatherClient = new HttpClient();
-            string weatherAPIURL = "http://api.openweathermap.org/data/2.5/forecast?" + "lat=" + currentCoordinate.Latitude + "&lon=" + currentCoordinate.Longitude + "&units=metric";
-            string weatherAPIResult = await weatherClient.GetStringAsync(weatherAPIURL);
-            Console.WriteLine(weatherAPIResult);
+            // Variable for tracking enabled status of background agents for this app.
+            agentsAreEnabled = true;
+
+            // Obtain a reference to the period task, if one exists
+            periodicTask = ScheduledActionService.Find(periodicTaskName) as PeriodicTask;
+
+            // If the task already exists and background agents are enabled for the
+            // application, you must remove the task and then add it again to update 
+            // the schedule
+            if (periodicTask != null)
+            {
+                RemoveAgent(periodicTaskName);
+            }
+
+            periodicTask = new PeriodicTask(periodicTaskName);
+
+            // The description is required for periodic agents. This is the string that the user
+            // will see in the background services Settings page on the device.
+            periodicTask.Description = "This demonstrates a periodic task.";
+
+            // Place the call to Add in a try block in case the user has disabled agents.
             try
             {
+                ScheduledActionService.Add(periodicTask);
+
+                // If debugging is enabled, use LaunchForTest to launch the agent in one minute.
+    ScheduledActionService.LaunchForTest(periodicTaskName, TimeSpan.FromSeconds(60));
+
+            }
+            catch (InvalidOperationException exception)
+            {
+                if (exception.Message.Contains("BNS Error: The action is disabled"))
+                {
+                    MessageBox.Show("Background agents for this application have been disabled by the user.");
+                    agentsAreEnabled = false;
+                }
+
+                if (exception.Message.Contains("BNS Error: The maximum number of ScheduledActions of this type have already been added."))
+                {
+                    // No user action required. The system prompts the user when the hard limit of periodic tasks has been reached.
+
+                }
+            }
+            catch (SchedulerServiceException)
+            {
+                // No user action required.
+            }
+        }
+
+        private void RemoveAgent(string name)
+        {
+            try
+            {
+                ScheduledActionService.Remove(name);
+            }
+            catch (Exception)
+            {
+            }
+        }
+
+        private async void getDailyForecastData()
+        {
+            try
+            {
+
+                HttpClient weatherClient = new HttpClient();
+                string weatherAPIURL = "http://api.openweathermap.org/data/2.5/forecast?" + "lat=" + currentCoordinate.Latitude + "&lon=" + currentCoordinate.Longitude + "&units=metric";
+                string weatherAPIResult = await weatherClient.GetStringAsync(weatherAPIURL);
+                Console.WriteLine(weatherAPIResult);
+
                 dailyForecastData = JsonConvert.DeserializeObject(weatherAPIResult).ToString();
                 App.ViewModel.LoadData(dailyForecastData);
-                
-              
-                //                TextBox foundTextBox = UIHelper.FindChild<TextBox>(longList, "currentTemperature");
-
+               
             }
             catch (Exception ex)
             {
@@ -93,12 +256,13 @@ namespace Weatherish
 
         private async void getWeeklyForecastData()
         {
+            try
+            {
             HttpClient weatherClient = new HttpClient();
             string weatherAPIURL = " http://api.openweathermap.org/data/2.5/forecast/daily?" + "lat=" + currentCoordinate.Latitude + "&lon=" + currentCoordinate.Longitude + "&units=metric" ;
             string weatherAPIResult = await weatherClient.GetStringAsync(weatherAPIURL);
             Console.WriteLine(weatherAPIResult);
-            try
-            {
+           
                 weeklyForecastData = JsonConvert.DeserializeObject(weatherAPIResult).ToString();
                 App.ViewModel.loadWeeklyData(weeklyForecastData);                
             }
@@ -106,33 +270,31 @@ namespace Weatherish
             {
 
             }
-            //var myTextBlock = (TextBlock)this.FindName("currentTemperature");
-            //myTextBlock.Text = apiData.main.temp + "°";
+            
+
         }
 
         private async void getCurrentWeatherData()
         {
+            try
+            {
             HttpClient weatherClient = new HttpClient();
             string weatherAPIURL = "http://api.openweathermap.org/data/2.5/weather?" + "lat=" + currentCoordinate.Latitude + "&lon=" + currentCoordinate.Longitude + "&units=metric" ;
             string weatherAPIResult = await weatherClient.GetStringAsync(weatherAPIURL);
             Console.WriteLine(weatherAPIResult);
-            try
-            {
+           
                 string apiData = JsonConvert.DeserializeObject(weatherAPIResult).ToString();
                 RootObject apiDataJson = JsonConvert.DeserializeObject<RootObject>(apiData);
                 int temp = (int)apiDataJson.main.temp;
                 currentTemperatureBlock.Text = temp.ToString() + "°C ";
                 currentTemperatureCondtion.Text = apiDataJson.weather[0].description;
-                hourlyForecastTextBlock.Text = DateTime.Now.ToString("dd MMM yyyy") + "  Hourly Forecast";
+                hourlyForecastTextBlock.Text = DateTime.Now.ToString("MMM dd") + " Hourly Forecast";
                 currentTemperatureRangeBlock.Text = "Temp   "+ apiDataJson.main.temp_min.ToString()+ "°~"+apiDataJson.main.temp_max.ToString() + "°";
                 currentWindSpeedBlock.Text = apiDataJson.wind.speed.ToString() + " Kph";
                 currentHumidityTextBlock.Text = apiDataJson.main.humidity.ToString() + "%";
 
-                var currentCulture = CultureInfo.CurrentCulture;
-                var weekNo = currentCulture.Calendar.GetWeekOfYear(
-                                DateTime.Now,
-                                currentCulture.DateTimeFormat.CalendarWeekRule,
-                                currentCulture.DateTimeFormat.FirstDayOfWeek);
+                thisWeekForecastTitle.Text = ordinal(GetWeekOfMonth(DateTime.Now)) +   " week of " + CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedMonthName(DateTime.Now.Month);
+
                 BitmapImage image = new BitmapImage(new Uri(App.ViewModel.getImageURLForWeatherIcon(apiDataJson.weather[0].icon), UriKind.Relative));
                 currentWeatherIcon.Source = image;
                     
@@ -147,6 +309,47 @@ namespace Weatherish
             //myTextBlock.Text = apiData.main.temp + "°";
 
         }
+       
+        public string ordinal(int num)
+        {
+             string suff;
+             int ones = num % 10;
+            int tens = (int)Math.Floor(num/10M) % 10;
+             if (tens == 1) {
+               suff = "th";
+                } else {
+                    switch (ones) {
+                        case 1 : suff = "st"; break;
+                        case 2 : suff = "nd"; break;
+                        case 3 : suff = "rd"; break;
+                        default: suff = "th"; break;
+                    }
+    }
+             return String.Format("{0}{1}", num, suff);
+        }
+        public static int GetWeekOfMonth(DateTime date)
+        {
+            DateTime beginningOfMonth = new DateTime(date.Year, date.Month, 1);
+
+            while (date.Date.AddDays(1).DayOfWeek != CultureInfo.CurrentCulture.DateTimeFormat.FirstDayOfWeek)
+                date = date.AddDays(1);
+
+            return (int)Math.Truncate((double)date.Subtract(beginningOfMonth).TotalDays / 7f) + 1;
+        }
+
+        private void LockScreen_ChangeCounterAndText(object sender, RoutedEventArgs e)
+        {
+            ShellTile.ActiveTiles.First().Update(
+                new FlipTileData()
+                {
+                    Count = 99,
+                    WideBackContent = "Lock screen text",
+                    SmallBackgroundImage = new Uri(@"Assets\Tiles\FlipCycleTileSmall.png", UriKind.Relative),
+                    BackgroundImage = new Uri(@"Assets\Tiles\FlipCycleTileMedium.png", UriKind.Relative),
+                    BackBackgroundImage = new Uri(@"Assets\Tiles\FlipCycleTileMedium.png", UriKind.Relative)
+                });
+        }
+
         private async void getLocation()
         {
             Geolocator geolocator = new Geolocator();
@@ -189,14 +392,6 @@ namespace Weatherish
         {
             HttpClient client = new HttpClient();
 
-            // About licenses:
-            // http://www.flickr.com/services/api/flickr.photos.licenses.getInfo.html
-            /*
-             *  <license id="4" name="Attribution License" url="http://creativecommons.org/licenses/by/2.0/" />
-                <license id="5" name="Attribution-ShareAlike License" url="http://creativecommons.org/licenses/by-sa/2.0/" />
-                <license id="6" name="Attribution-NoDerivs License" url="http://creativecommons.org/licenses/by-nd/2.0/" />
-                <license id="7" name="No known copyright restrictions" url="http://flickr.com/commons/usage/" />
-             */
             string[] licenses = { "4", "5", "6", "7" };
             string license = String.Join(",", licenses);
             license = license.Replace(",", "%2C");
@@ -434,7 +629,6 @@ namespace Weatherish
 
         private void thisWeekForecastTitle_Loaded(object sender, RoutedEventArgs e)
         {
-            thisWeekForecastTitle = (TextBlock)sender;
         }
 
         private void Image_Loaded(object sender, RoutedEventArgs e)
@@ -455,6 +649,12 @@ namespace Weatherish
         private void temperatureRangeBlock_Loaded(object sender, RoutedEventArgs e)
         {
             currentTemperatureRangeBlock = (TextBlock)sender;
+        }
+
+        private void thisWeekHeaderTitle_Loaded(object sender, RoutedEventArgs e)
+        {
+            thisWeekForecastTitle = (TextBlock)sender;
+
         }   
 
 
