@@ -59,7 +59,7 @@ namespace WeatherUpdaterAgent
         /// <remarks>
         /// This method is called when a periodic or resource intensive task is invoked
         /// </remarks>
-        protected async override void OnInvoke(ScheduledTask task)
+        protected override void OnInvoke(ScheduledTask task)
         {
             //TODO: Add code to perform your task in background
             Deployment.Current.Dispatcher.BeginInvoke(async () =>
@@ -68,7 +68,7 @@ namespace WeatherUpdaterAgent
                 NotifyComplete();
             });
 
-           // getCurrentPlaceAndWOEID();
+           
         }
 
         private async Task getLocation()
@@ -93,6 +93,8 @@ namespace WeatherUpdaterAgent
 
                 try
                 {
+                
+                    await getCurrentPlaceAndWOEID();
                 HttpClient weatherClient = new HttpClient();
                 string weatherAPIURL = "http://api.openweathermap.org/data/2.5/weather?" + "lat=" + currentCoordinate.Latitude + "&lon=" + currentCoordinate.Longitude + "&units=metric";
                // string weatherAPIURL = "http://api.openweathermap.org/data/2.5/weather?lat=35&lon=139&units=metric";
@@ -132,7 +134,7 @@ namespace WeatherUpdaterAgent
 
                         var lockTextBlock = new TextBlock
                         {
-                            Text = apiDataJson.name + Environment.NewLine + Math.Round(apiDataJson.main.temp,2) + "°C" + Environment.NewLine +
+                            Text = (currentPlace.Length>0?currentPlace:apiDataJson.name) + Environment.NewLine + Math.Round(apiDataJson.main.temp,2) + "°C" + Environment.NewLine +
                                     apiDataJson.weather[0].description,
                             FontSize = 24,
                             Foreground = new SolidColorBrush(Colors.White),
@@ -176,13 +178,13 @@ namespace WeatherUpdaterAgent
                             bitmap.Render(lockWeatherImage, new TranslateTransform()
                             {
                                 X = 25,
-                                Y = 36
+                                Y = 75
                             });
 
                             bitmap.Render(lockTextBlock, new TranslateTransform()
                             {
                                 X = 25,
-                                Y = 118
+                                Y = 150
                             });
 
                             bitmap.Invalidate();
@@ -221,12 +223,9 @@ namespace WeatherUpdaterAgent
                 }
                 catch (Exception ex)
                 {
-
+                    Debug.WriteLine(ex.Message);
                 }
-                //getCurrentPlaceAndWOEID();
-                //getDailyForecastData();
-                //getWeeklyForecastData();
-
+              
             }
             catch (Exception ex)
             {
@@ -242,61 +241,68 @@ namespace WeatherUpdaterAgent
             }
 
         }
-        private async void getCurrentPlaceAndWOEID()
+        private async Task getCurrentPlaceAndWOEID()
         {
-            HttpClient client = new HttpClient();
-
-            string[] licenses = { "4", "5", "6", "7" };
-            string license = String.Join(",", licenses);
-            license = license.Replace(",", "%2C");
-            double latitude = 0;
-            double longitude = 0;
-
-            if (!double.IsNaN(latitude))
-                latitude = Math.Round(latitude, 5);
-
-            if (!double.IsNaN(longitude))
-                longitude = Math.Round(longitude, 5);
-
-            // Your API key ... REPLACE THIS WITH YOURS:
-            // http://www.flickr.com/services/api/keys/
-
-            // Search API
-            // http://www.flickr.com/services/api/flickr.photos.search.html
-
-            string url = "http://api.flickr.com/services/rest/" +
-                "?method=flickr.places.findByLatLon" +
-                "&api_key={1}" +
-                "&lat=" + currentCoordinate.Latitude.ToString() +
-                "&lon=" + currentCoordinate.Longitude.ToString() +
-                "&format=json" +
-                "&nojsoncallback=1";
-
-            var baseUrl = string.Format(url,
-                license,
-                flickrApiKey,
-                currentCoordinate.Latitude,
-                currentCoordinate.Longitude);
-
-            string flickrResult = await client.GetStringAsync(baseUrl);
-            Console.WriteLine(flickrResult);
-            //ResultTextBlock.Text = flickrResult;
-
-            Location apiData = JsonConvert.DeserializeObject<Location>(flickrResult);
-
-            if (apiData.stat == "ok")
+            try
             {
-                foreach (Place placeObject in apiData.places.place)
-                {
-                    currentPlace = placeObject.woe_name;
-                    string[] cityName = placeObject.name.Split(',');
-                    if (cityName.Length > 0)
-                        currentCity = cityName[1];
-                    if (cityName.Length > 3)
-                        currentCountry = cityName[4];
-                    break;
-                }
+                HttpClient client = new HttpClient();
 
+                string[] licenses = { "4", "5", "6", "7" };
+                string license = String.Join(",", licenses);
+                license = license.Replace(",", "%2C");
+                double latitude = 0;
+                double longitude = 0;
+
+                if (!double.IsNaN(latitude))
+                    latitude = Math.Round(latitude, 5);
+
+                if (!double.IsNaN(longitude))
+                    longitude = Math.Round(longitude, 5);
+
+                // Your API key ... REPLACE THIS WITH YOURS:
+                // http://www.flickr.com/services/api/keys/
+
+                // Search API
+                // http://www.flickr.com/services/api/flickr.photos.search.html
+
+                string url = "http://api.flickr.com/services/rest/" +
+                    "?method=flickr.places.findByLatLon" +
+                    "&api_key={1}" +
+                    "&lat=" + currentCoordinate.Latitude.ToString() +
+                    "&lon=" + currentCoordinate.Longitude.ToString() +
+                    "&format=json" +
+                    "&nojsoncallback=1";
+
+                var baseUrl = string.Format(url,
+                    license,
+                    flickrApiKey,
+                    currentCoordinate.Latitude,
+                    currentCoordinate.Longitude);
+
+                string flickrResult = await client.GetStringAsync(baseUrl);
+                Console.WriteLine(flickrResult);
+                //ResultTextBlock.Text = flickrResult;
+
+                Location apiData = JsonConvert.DeserializeObject<Location>(flickrResult);
+
+                if (apiData.stat == "ok")
+                {
+                    foreach (Place placeObject in apiData.places.place)
+                    {
+                        currentPlace = placeObject.woe_name;
+                        string[] cityName = placeObject.name.Split(',');
+                        if (cityName.Length > 0)
+                            currentCity = cityName[1];
+                        if (cityName.Length > 3)
+                            currentCountry = cityName[4];
+                        break;
+                    }
+
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex.Message);
             }
         }
     

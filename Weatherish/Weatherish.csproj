@@ -136,6 +136,10 @@
   <ItemGroup>
     <Content Include="Assets\Apollo8.jpg" />
     <Content Include="Assets\Background.jpg" />
+    <Content Include="Assets\SampleData\currentWeather.txt" />
+    <Content Include="Assets\SampleData\dailyWeather.txt" />
+    <Content Include="Assets\SampleData\weeklyWeather.txt" />
+    <Content Include="Assets\SampleData\WOESample.txt" />
     <Content Include="Assets\WeatherIcons\temperature-32.png" />
     <Content Include="Assets\WeatherIcons\weather-broken%402x.png" />
     <Content Include="Assets\WeatherIcons\weather-broken.png" />

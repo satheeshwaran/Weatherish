@@ -4,6 +4,7 @@ using System.ComponentModel;
 using Weatherish.Resources;
 using System.Collections.Generic;
 using Newtonsoft.Json;
+using System.Diagnostics;
 
 
 namespace Weatherish.ViewModels
@@ -72,7 +73,7 @@ namespace Weatherish.ViewModels
                 {
                 
                 DailyWeatherObject foreCastJSONData = JsonConvert.DeserializeObject<DailyWeatherObject>(dailyForecastData);
-
+                this.dailyForecastItems.Clear();
                     foreach (WeatherList listObj in foreCastJSONData.list)
                     {
                         DateTime forecastTime = FromUnixTime(listObj.dt);
@@ -83,7 +84,7 @@ namespace Weatherish.ViewModels
                 }
                 catch (Exception ex)
                 {
-
+                    Debug.WriteLine(ex.Message);
                 }
 
 
@@ -98,7 +99,7 @@ namespace Weatherish.ViewModels
                 {
 
                     WeeklyWeatherObject foreCastJSONData = JsonConvert.DeserializeObject<WeeklyWeatherObject>(dailyForecastData);
-
+                    this.weeklyForecastItems.Clear();
                     foreach (WeeklyWeatherList listObj in foreCastJSONData.list)
                     {
                         DateTime forecastTime = FromUnixTime(listObj.dt);
@@ -109,7 +110,7 @@ namespace Weatherish.ViewModels
                 }
                 catch (Exception ex)
                 {
-
+                    Debug.WriteLine(ex.Message);
                 }
 
             }

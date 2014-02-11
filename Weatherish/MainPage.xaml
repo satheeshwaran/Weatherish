@@ -59,21 +59,21 @@
                                            Grid.Row="0" FontSize="48" Margin="80,0,0,0" Loaded="textBoxLoaded" Width="100" HorizontalAlignment="Left"  />
                                 <TextBlock Name="currentTemperatureCondtion"  Text="Clear"
                                            Style="{StaticResource PanoramaItemHeaderTextStyle}"
-                                           Grid.Row="0" Grid.Column="1" FontSize="40" Margin="200,0,0,0" Loaded="currentTemperatureCondtion_Loaded" HorizontalAlignment="Left" VerticalAlignment="Bottom" />
+                                           Grid.Row="0" FontSize="38" Margin="200,0,0,0" Loaded="currentTemperatureCondtion_Loaded" HorizontalAlignment="Left" VerticalAlignment="Bottom" Height="54" />
                                 <TextBlock Name="temperatureRangeBlock"
-                                           Text="Temp   3°~6°"
+                                           Text="Temp 1.11°~6.11°"
                                            Style="{StaticResource PanoramaItemHeaderTextStyle}"
-                                           Grid.Row="1" FontSize="25" Margin="0,25,0,62" VerticalAlignment="Center" HorizontalAlignment="Left" Loaded="temperatureRangeBlock_Loaded" Width="156" Padding="0,0,0,10"/>
-                                <Image Source="/Assets/WeatherIcons/temperature-32.png" Width="32" Height="32" Canvas.ZIndex="4" HorizontalAlignment="Left" Grid.Row="1" Margin="175,8,0,57"></Image>
+                                           Grid.Row="1" FontSize="25" Margin="0,32,0,69" VerticalAlignment="Center" HorizontalAlignment="Left" Loaded="temperatureRangeBlock_Loaded" Width="170" Padding="0,0,0,10"/>
+                                <Image Source="/Assets/WeatherIcons/temperature-32.png" Width="32" Height="32" Canvas.ZIndex="4" HorizontalAlignment="Left" Grid.Row="1" Margin="180,8,0,57"></Image>
                                 <TextBlock Name="humidityBlock"
                                            Text="60%"
                                            Style="{StaticResource PanoramaItemHeaderTextStyle}"
-                                           Grid.Row="1" FontSize="25" Margin="210,25,0,68" VerticalAlignment="Center" HorizontalAlignment="Left" Loaded="humidityBlock_Loaded" Width="72"/>
-                                <Image Source="/Assets/WeatherIcons/wind-turbine-32.png" Width="32" Height="32" Canvas.ZIndex="4" HorizontalAlignment="Left" Grid.Row="1" Margin="290,8,0,57"></Image>
+                                           Grid.Row="1" FontSize="25" Margin="215,25,0,68" VerticalAlignment="Center" HorizontalAlignment="Left" Loaded="humidityBlock_Loaded" Width="50"/>
+                                <Image Source="/Assets/WeatherIcons/wind-turbine-32.png" Width="32" Height="32" Canvas.ZIndex="4" HorizontalAlignment="Left" Grid.Row="1" Margin="280,8,0,57"></Image>
                                 <TextBlock Name="windSpeedTextBlock"
                                            Text="60 kph"
                                            Style="{StaticResource PanoramaItemHeaderTextStyle}"
-                                           Grid.Row="1" FontSize="25" Margin="328,30,0,70" VerticalAlignment="Center" HorizontalAlignment="Left" Loaded="windSpeedTextBlock_Loaded"/>
+                                           Grid.Row="1" FontSize="25" Margin="315,30,0,70" VerticalAlignment="Center" HorizontalAlignment="Left" Loaded="windSpeedTextBlock_Loaded"/>
                                 <TextBlock Name="hourlyForecastTextBlock"
                                            Text="Hourly Forecast"
                                            Style="{StaticResource PanoramaItemHeaderTextStyle}"
@@ -116,7 +116,7 @@
                                 <TextBlock Name="thisWeekHeaderTitle"  Text="This Week"
                                            Style="{StaticResource PanoramaItemHeaderTextStyle}"
                                            Grid.Row="0" FontSize="48" Margin="10,0,0,0" Loaded="thisWeekHeaderTitle_Loaded"/>
-                             </Grid>
+                            </Grid>
                         </DataTemplate>
 
                     </phone:LongListSelector.ListHeaderTemplate>

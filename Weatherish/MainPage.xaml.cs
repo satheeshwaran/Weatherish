@@ -17,6 +17,14 @@ using System.Globalization;
 using Microsoft.Phone.Scheduler;
 using Windows.Phone.System.UserProfile;
 using System.Threading;
+using System.Windows.Resources;
+using System.IO.IsolatedStorage;
+using System.IO;
+using System.Diagnostics;
+using Microsoft.Phone.Net.NetworkInformation;
+using System.Text;
+using Windows.Storage;
+using System.Threading.Tasks;
 
 namespace Weatherish
 {
@@ -53,20 +61,168 @@ namespace Weatherish
         private readonly TileHelper _tileHelper = new TileHelper();
         private bool _isLockScreenProvider;
         private bool _agentsAreEnabled;
-
-        
-
+        private string firstTimeLoadFlag;
+        private static string dailyWeatherDataKey = "dailyWeatherDataJSON";
+        private static string weeklyWeatherDataKey = "weeklyWeatherDataJSON";
+        private static string currentWeatherDataKey = "currentWeatherDataJSON";
+        private static string woeAndPlaceIDKey = "WOEandPlaceIDJSON";
+        private const string panoramaBGTypeKey = "PanoramaBGTypeKey";
+        private const string panoramaBGCityBased = "PanoramaCityBased";
+        private const string panoramaBGLocationBased = "PanoramaLocationBased";
+        private const string panoramaBGCountyBased = "PanoramaConutryBased";
+        private const string panoramaRandomFromGroup = "PanoramaRandomBased";
+        private bool sampleDataLoaded = false;
+        private bool oldDataLoaded = false;
 
         // Constructor
         public MainPage()
         {
             InitializeComponent();
-
+            if (!checkInternetConnection())
+                MessageBox.Show("Weatherish needs internet connectivity to load weather data, you may see sample or old data here.");
+            
             // Set the data context of the listbox control to the sample data
             DataContext = App.ViewModel;
 
         }
 
+        private async void setUpSampleDataIfFirstTime()
+        {
+            if (checkFirstTime())
+            {
+                await setFirstTimeSampleData();
+                if (!oldDataLoaded)
+                  loadOldDataToScreen();
+                setFirstTime();
+                sampleDataLoaded = true;
+            }
+        }
+
+        private async Task setFirstTimeSampleData()
+        {
+            try
+            {
+                string dailyWeather = @"Assets\SampleData\dailyWeather.txt";
+                StorageFolder InstallationFolder = Windows.ApplicationModel.Package.Current.InstalledLocation;
+                StorageFile file = await InstallationFolder.GetFileAsync(dailyWeather);
+                var dailyWeatherSampleData = new StreamReader(await file.OpenStreamForReadAsync()).ReadToEnd();
+                setStringToIsolatedStorage(dailyWeatherDataKey, dailyWeatherSampleData);
+
+                string weeklyWeather = @"Assets\SampleData\weeklyWeather.txt";
+                StorageFile file1 = await InstallationFolder.GetFileAsync(weeklyWeather);
+                var weeklyWeatherSampleData = new StreamReader(await file1.OpenStreamForReadAsync()).ReadToEnd();
+                setStringToIsolatedStorage(weeklyWeatherDataKey, weeklyWeatherSampleData);
+
+                string currentWeather = @"Assets\SampleData\currentWeather.txt";
+                StorageFile file2 = await InstallationFolder.GetFileAsync(currentWeather);
+                var currentWeatherSampleData = new StreamReader(await file2.OpenStreamForReadAsync()).ReadToEnd();
+                setStringToIsolatedStorage(currentWeatherDataKey, currentWeatherSampleData);
+
+                string WOELocation = @"Assets\SampleData\WOESample.txt";
+                StorageFile file3 = await InstallationFolder.GetFileAsync(WOELocation);
+                var woePlaceIDSampleData = new StreamReader(await file3.OpenStreamForReadAsync()).ReadToEnd();
+                setStringToIsolatedStorage(woeAndPlaceIDKey, woePlaceIDSampleData);
+
+            }
+            catch
+            {
+
+            }
+        }
+
+        private bool checkFirstTime()
+        {
+            bool returnBool;
+
+            try
+            {
+                firstTimeLoadFlag = (string)IsolatedStorageSettings.ApplicationSettings["firstTimeLoadFlag"];
+                returnBool = firstTimeLoadFlag.Equals("0") ? true : false;
+            }
+            catch
+            {
+                returnBool = true;
+            }
+
+            return returnBool;
+        }
+
+        private void setFirstTime()
+        {
+            try
+            {
+                IsolatedStorageSettings.ApplicationSettings.Add("firstTimeLoadFlag", "0");
+            }
+            catch
+            {
+                IsolatedStorageSettings.ApplicationSettings["firstTimeLoadFlag"] = "0";
+
+            }
+
+        }
+
+        private string getStringFromIsolatedStorage(string key)
+        {
+            return (string)IsolatedStorageSettings.ApplicationSettings[key];
+        }
+
+        private void setStringToIsolatedStorage(string key, string value)
+        {
+            try
+            {
+                if(!IsolatedStorageSettings.ApplicationSettings.Contains(key))
+                    IsolatedStorageSettings.ApplicationSettings.Add(key,value);
+                else
+                    IsolatedStorageSettings.ApplicationSettings[key] = value;
+            }
+            catch
+            {
+                IsolatedStorageSettings.ApplicationSettings[key] = value;
+            }
+        }
+
+        private bool checkInternetConnection()
+        {
+            if (NetworkInterface.GetIsNetworkAvailable())
+            {
+                return true;
+            }
+            else
+                return false;
+        }
+
+        private void loadOldDataToScreen()
+        {
+            try
+            {
+                oldDataLoaded = true;
+                string dailyWeatherFromISO = getStringFromIsolatedStorage(dailyWeatherDataKey);
+                if (dailyWeatherFromISO.Length > 0)
+                {
+                    dailyForecastData = JsonConvert.DeserializeObject(dailyWeatherFromISO).ToString();
+                    App.ViewModel.LoadData(dailyForecastData);
+                }
+
+                string weeklyWeatherFromISO = getStringFromIsolatedStorage(weeklyWeatherDataKey);
+                if (weeklyWeatherFromISO.Length > 0)
+                {
+                    weeklyForecastData = JsonConvert.DeserializeObject(weeklyWeatherFromISO).ToString();
+                    App.ViewModel.loadWeeklyData(weeklyForecastData);
+                }
+                string currentWeatherFromISO = getStringFromIsolatedStorage(currentWeatherDataKey);
+                if (currentWeatherFromISO.Length > 0)
+                setCurrenWeatherData(currentWeatherFromISO);
+
+                string WOEPlaceID = getStringFromIsolatedStorage(woeAndPlaceIDKey);
+                if(WOEPlaceID.Length>0)
+                setPlaceData(WOEPlaceID,false);
+            }
+            catch(Exception ex)
+            {
+                Debug.WriteLine(ex.Message);
+            }
+
+        }
 
         private async void LockHelper(Uri backgroundImageUri, string backgroundAction)
         {
@@ -153,20 +309,35 @@ namespace Weatherish
         void MainPage_Loaded(object sender, RoutedEventArgs e)
         {
 
+            setUpSampleDataIfFirstTime();
             LockHelper(new Uri("", UriKind.RelativeOrAbsolute), "allow");
-            Thread.Sleep(500);
             StartPeriodicAgent();
-            getLocation();
+            getUserLocation();
+
+            if (!oldDataLoaded)
+                loadOldDataToScreen();
+
+            
         }
 
         private void Panorama_Loaded(object sender, RoutedEventArgs e)
         {
-
             ImageBrush b = new ImageBrush();
-            BitmapImage image = new BitmapImage(new Uri("/Assets/bg.png", UriKind.Relative));
-            b.ImageSource = image;
-            b.Opacity = 0.70;
-            weatherishPanorma.Background = b;
+            Image previouslyDownloadedImage = LoadImageFromIsolatedStorage("PanoramoBackgroundImage.jpg");
+            if (previouslyDownloadedImage.Source != null)
+            {
+                b.ImageSource = previouslyDownloadedImage.Source;
+                b.Opacity = 0.70;
+                weatherishPanorma.Background = b;
+
+            }
+            else
+            {
+                BitmapImage image = new BitmapImage(new Uri("/Assets/Background.jpg", UriKind.Relative));
+                b.ImageSource = image;
+                b.Opacity = 0.70;
+                weatherishPanorma.Background = b;
+            }
         }
 
         public void StartPeriodicAgent()
@@ -239,6 +410,7 @@ namespace Weatherish
                 HttpClient weatherClient = new HttpClient();
                 string weatherAPIURL = "http://api.openweathermap.org/data/2.5/forecast?" + "lat=" + currentCoordinate.Latitude + "&lon=" + currentCoordinate.Longitude + "&units=metric";
                 string weatherAPIResult = await weatherClient.GetStringAsync(weatherAPIURL);
+                setStringToIsolatedStorage(dailyWeatherDataKey, weatherAPIResult);
                 Console.WriteLine(weatherAPIResult);
 
                 dailyForecastData = JsonConvert.DeserializeObject(weatherAPIResult).ToString();
@@ -247,6 +419,7 @@ namespace Weatherish
             }
             catch (Exception ex)
             {
+                Debug.WriteLine(ex.Message);
 
             }
             //var myTextBlock = (TextBlock)this.FindName("currentTemperature");
@@ -262,16 +435,38 @@ namespace Weatherish
             string weatherAPIURL = " http://api.openweathermap.org/data/2.5/forecast/daily?" + "lat=" + currentCoordinate.Latitude + "&lon=" + currentCoordinate.Longitude + "&units=metric" ;
             string weatherAPIResult = await weatherClient.GetStringAsync(weatherAPIURL);
             Console.WriteLine(weatherAPIResult);
-           
-                weeklyForecastData = JsonConvert.DeserializeObject(weatherAPIResult).ToString();
-                App.ViewModel.loadWeeklyData(weeklyForecastData);                
+            setStringToIsolatedStorage(weeklyWeatherDataKey,weatherAPIResult);
+            weeklyForecastData = JsonConvert.DeserializeObject(weatherAPIResult).ToString();
+            App.ViewModel.loadWeeklyData(weeklyForecastData);                
             }
             catch (Exception ex)
             {
+                Debug.WriteLine(ex.Message);
 
             }
             
 
+        }
+
+        private void setCurrenWeatherData(string weatherAPIResult )
+        {
+            Console.WriteLine(weatherAPIResult);
+
+            string apiData = JsonConvert.DeserializeObject(weatherAPIResult).ToString();
+            RootObject apiDataJson = JsonConvert.DeserializeObject<RootObject>(apiData);
+            int temp = (int)apiDataJson.main.temp;
+            currentTemperatureBlock.Text = temp.ToString() + "°C ";
+            currentTemperatureCondtion.Text = apiDataJson.weather[0].description;
+            hourlyForecastTextBlock.Text = DateTime.Now.ToString("MMM dd") + " Hourly Forecast";
+            currentTemperatureRangeBlock.Text = "Temp " + apiDataJson.main.temp_min.ToString() + "°~" + apiDataJson.main.temp_max.ToString() + "°";
+            currentWindSpeedBlock.Text = apiDataJson.wind.speed.ToString() + " Kph";
+            currentHumidityTextBlock.Text = apiDataJson.main.humidity.ToString() + "%";
+
+            thisWeekForecastTitle.Text = ordinal(GetWeekOfMonth(DateTime.Now)) + " week of " + CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedMonthName(DateTime.Now.Month);
+
+            BitmapImage image = new BitmapImage(new Uri(App.ViewModel.getImageURLForWeatherIcon(apiDataJson.weather[0].icon), UriKind.Relative));
+            currentWeatherIcon.Source = image;
+                    
         }
 
         private async void getCurrentWeatherData()
@@ -281,28 +476,14 @@ namespace Weatherish
             HttpClient weatherClient = new HttpClient();
             string weatherAPIURL = "http://api.openweathermap.org/data/2.5/weather?" + "lat=" + currentCoordinate.Latitude + "&lon=" + currentCoordinate.Longitude + "&units=metric" ;
             string weatherAPIResult = await weatherClient.GetStringAsync(weatherAPIURL);
-            Console.WriteLine(weatherAPIResult);
-           
-                string apiData = JsonConvert.DeserializeObject(weatherAPIResult).ToString();
-                RootObject apiDataJson = JsonConvert.DeserializeObject<RootObject>(apiData);
-                int temp = (int)apiDataJson.main.temp;
-                currentTemperatureBlock.Text = temp.ToString() + "°C ";
-                currentTemperatureCondtion.Text = apiDataJson.weather[0].description;
-                hourlyForecastTextBlock.Text = DateTime.Now.ToString("MMM dd") + " Hourly Forecast";
-                currentTemperatureRangeBlock.Text = "Temp   "+ apiDataJson.main.temp_min.ToString()+ "°~"+apiDataJson.main.temp_max.ToString() + "°";
-                currentWindSpeedBlock.Text = apiDataJson.wind.speed.ToString() + " Kph";
-                currentHumidityTextBlock.Text = apiDataJson.main.humidity.ToString() + "%";
-
-                thisWeekForecastTitle.Text = ordinal(GetWeekOfMonth(DateTime.Now)) +   " week of " + CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedMonthName(DateTime.Now.Month);
-
-                BitmapImage image = new BitmapImage(new Uri(App.ViewModel.getImageURLForWeatherIcon(apiDataJson.weather[0].icon), UriKind.Relative));
-                currentWeatherIcon.Source = image;
-                    
+            setStringToIsolatedStorage(currentWeatherDataKey, weatherAPIResult);
+            setCurrenWeatherData(weatherAPIResult);  
 //                TextBox foundTextBox = UIHelper.FindChild<TextBox>(longList, "currentTemperature");
 
             }
             catch (Exception ex)
             {
+                                    Debug.WriteLine(ex.Message);
 
             }
             //var myTextBlock = (TextBlock)this.FindName("currentTemperature");
@@ -350,7 +531,7 @@ namespace Weatherish
                 });
         }
 
-        private async void getLocation()
+        private async void getUserLocation()
         {
             Geolocator geolocator = new Geolocator();
             geolocator.DesiredAccuracyInMeters = 50;
@@ -390,49 +571,60 @@ namespace Weatherish
         }
         private async void getCurrentPlaceAndWOEID()
         {
-            HttpClient client = new HttpClient();
+            try
+            {
+                HttpClient client = new HttpClient();
 
-            string[] licenses = { "4", "5", "6", "7" };
-            string license = String.Join(",", licenses);
-            license = license.Replace(",", "%2C");
-            double latitude = 0;
-            double longitude = 0;
+                string[] licenses = { "4", "5", "6", "7" };
+                string license = String.Join(",", licenses);
+                license = license.Replace(",", "%2C");
+                double latitude = 0;
+                double longitude = 0;
 
-            if (!double.IsNaN(latitude))
-                latitude = Math.Round(latitude, 5);
+                if (!double.IsNaN(latitude))
+                    latitude = Math.Round(latitude, 5);
 
-            if (!double.IsNaN(longitude))
-                longitude = Math.Round(longitude, 5);
+                if (!double.IsNaN(longitude))
+                    longitude = Math.Round(longitude, 5);
 
-            // Your API key ... REPLACE THIS WITH YOURS:
-            // http://www.flickr.com/services/api/keys/
+                // Your API key ... REPLACE THIS WITH YOURS:
+                // http://www.flickr.com/services/api/keys/
 
-            // Search API
-            // http://www.flickr.com/services/api/flickr.photos.search.html
+                // Search API
+                // http://www.flickr.com/services/api/flickr.photos.search.html
 
-            string url = "http://api.flickr.com/services/rest/" +
-                "?method=flickr.places.findByLatLon" +
-                "&api_key={1}"+
-                "&lat=" +currentCoordinate.Latitude.ToString()+
-                "&lon=" + currentCoordinate.Longitude.ToString()+
-                "&format=json" +
-                "&nojsoncallback=1";
+                string url = "http://api.flickr.com/services/rest/" +
+                    "?method=flickr.places.findByLatLon" +
+                    "&api_key={1}" +
+                    "&lat=" + currentCoordinate.Latitude.ToString() +
+                    "&lon=" + currentCoordinate.Longitude.ToString() +
+                    "&format=json" +
+                    "&nojsoncallback=1";
 
-            var baseUrl = string.Format(url,
-                license,
-                flickrApiKey,
-                currentCoordinate.Latitude,
-                currentCoordinate.Longitude);
+                var baseUrl = string.Format(url,
+                    license,
+                    flickrApiKey,
+                    currentCoordinate.Latitude,
+                    currentCoordinate.Longitude);
 
-            string flickrResult = await client.GetStringAsync(baseUrl);
-            Console.WriteLine(flickrResult);
-            //ResultTextBlock.Text = flickrResult;
+                string flickrResult = await client.GetStringAsync(baseUrl);
+                Console.WriteLine(flickrResult);
+                setStringToIsolatedStorage(woeAndPlaceIDKey, flickrResult);
+                setPlaceData(flickrResult,true);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex.Message);
+            }
+        }
 
+        private void setPlaceData(string flickrResult,bool sampleDataFlag)
+        {
             Location apiData = JsonConvert.DeserializeObject<Location>(flickrResult);
 
             if (apiData.stat == "ok")
             {
-                foreach(Place placeObject in apiData.places.place)
+                foreach (Place placeObject in apiData.places.place)
                 {
                     locationTextBlock.Text = placeObject.woe_name;
                     currentPlace = placeObject.woe_name;
@@ -443,21 +635,59 @@ namespace Weatherish
                         currentCountry = cityName[4];
                     break;
                 }
-                getBGImageFromFlickrSource();
+                if (sampleDataFlag)
+                {
+                    /*try
+                    {
+                        string bgType = getStringFromIsolatedStorage(panoramaBGTypeKey);
+                        switch (bgType)
+                        {
+                            case panoramaBGLocationBased:
+                                {
+                                    getBGImageFromFlickrSourceForNearestCity();
+                                }
+                                break;
+                            case panoramaBGCityBased:
+                                {
+                                    getBGImageFromFlickrSourceForNearestCity();
+                                }
+                                break;
+                            case panoramaBGCountyBased:
+                                {
+                                    getBGImageFromFlickrSourceForCountryAtleast();
+                                }
+                                break;
+                            case panoramaRandomFromGroup:
+                                {
+                                    getBGImageFromFlickrSource();
+                                }
+                                break;
 
-             }
+                        }
+
+                    }
+                    catch
+                    {
+                        getBGImageFromFlickrSource();
+                    }*/
+                    getBGImageFromFlickrSource();
+                }
+            }
+
         }
+
         private async void getBGImageFromFlickrSource()
         {
-
+            try
+            {
                 HttpClient client = new HttpClient();
 
                 string url = "http://api.flickr.com/services/rest/" +
                     "?method=flickr.groups.pools.getPhotos" +
                     "&api_key={0}" +
-                    "&group_id=1463451%40N25"+
-                    "&privacy_filter=1"+
-                    "&tags="+currentPlace+
+                    "&group_id=1463451%40N25" +
+                    "&privacy_filter=1" +
+                    "&tags=" + currentPlace +
                     "&format=json" +
                     "&nojsoncallback=1";
 
@@ -489,6 +719,7 @@ namespace Weatherish
                                 data.secret);
 
                             setPanormaBG(baseFlickrUrl);
+                            setStringToIsolatedStorage(panoramaBGTypeKey,panoramaBGLocationBased);
                             break;
                         }
                     }
@@ -496,58 +727,71 @@ namespace Weatherish
                     {
                         getBGImageFromFlickrSourceForNearestCity();
                     }
-                }           
+                }
+            }
+            catch(Exception ex)
+            {
+                Debug.WriteLine(ex.Message);
+                getBGImageFromFlickrSourceForNearestCity();
+            }
         }
 
         private async void getBGImageFromFlickrSourceForNearestCity()
         {
-
-            HttpClient client = new HttpClient();
-
-            string url = "http://api.flickr.com/services/rest/" +
-                "?method=flickr.groups.pools.getPhotos" +
-                "&api_key={0}" +
-                "&group_id=1463451%40N25" +
-                "&privacy_filter=1" +
-                "&tags=" + currentCity +
-                "&format=json" +
-                "&nojsoncallback=1";
-
-            var baseUrl = string.Format(url,
-                flickrApiKey);
-
-            string flickrResult = await client.GetStringAsync(baseUrl);
-            Console.WriteLine(flickrResult);
-            //ResultTextBlock.Text = flickrResult;
-
-            FlickrData apiData = JsonConvert.DeserializeObject<FlickrData>(flickrResult);
-
-            if (apiData.stat == "ok")
+            try
             {
-                if (apiData.photos.photo.Count > 0)
+                HttpClient client = new HttpClient();
+
+                string url = "http://api.flickr.com/services/rest/" +
+                    "?method=flickr.groups.pools.getPhotos" +
+                    "&api_key={0}" +
+                    "&group_id=1463451%40N25" +
+                    "&privacy_filter=1" +
+                    "&tags=" + currentCity +
+                    "&format=json" +
+                    "&nojsoncallback=1";
+
+                var baseUrl = string.Format(url,
+                    flickrApiKey);
+
+                string flickrResult = await client.GetStringAsync(baseUrl);
+                Console.WriteLine(flickrResult);
+                //ResultTextBlock.Text = flickrResult;
+
+                FlickrData apiData = JsonConvert.DeserializeObject<FlickrData>(flickrResult);
+
+                if (apiData.stat == "ok")
                 {
-                    Random r = new Random();
-                    int rInt = r.Next(0, apiData.photos.photo.Count);
-                    Photo data = apiData.photos.photo[rInt];
+                    if (apiData.photos.photo.Count > 0)
+                    {
+                        Random r = new Random();
+                        int rInt = r.Next(0, apiData.photos.photo.Count);
+                        Photo data = apiData.photos.photo[rInt];
 
-                    string photoUrl = "http://farm{0}.staticflickr.com/{1}/{2}_{3}.jpg";
-                    Console.WriteLine(photoUrl);
+                        string photoUrl = "http://farm{0}.staticflickr.com/{1}/{2}_{3}.jpg";
+                        Console.WriteLine(photoUrl);
 
-                    string baseFlickrUrl = string.Format(photoUrl,
-                        data.farm,
-                        data.server,
-                        data.id,
-                        data.secret);
+                        string baseFlickrUrl = string.Format(photoUrl,
+                            data.farm,
+                            data.server,
+                            data.id,
+                            data.secret);
 
-                    setPanormaBG(baseFlickrUrl);
-                  
-                }
-                else
-                {
-                    getBGImageFromFlickrSourceForCountryAtleast();
+                        setPanormaBG(baseFlickrUrl);
+                        setStringToIsolatedStorage(panoramaBGTypeKey,panoramaBGCityBased);
+
+
+                    }
+                    else
+                    {
+                        getBGImageFromFlickrSourceForCountryAtleast();
+                    }
                 }
             }
-
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex.Message);
+            }
             //AroundMeMap.SetView(new GeoCoordinate(41.8988D, -87.6231D), 17D);
 
 
@@ -555,9 +799,9 @@ namespace Weatherish
 
         private async void getBGImageFromFlickrSourceForCountryAtleast()
         {
-
+            try
+            {
             HttpClient client = new HttpClient();
-
             string url = "http://api.flickr.com/services/rest/" +
                 "?method=flickr.groups.pools.getPhotos" +
                 "&api_key={0}" +
@@ -594,22 +838,198 @@ namespace Weatherish
                         data.secret);
 
                     setPanormaBG(baseFlickrUrl);
+                    setStringToIsolatedStorage(panoramaBGTypeKey,panoramaBGCountyBased);
+
+                }
+                else
+                {
+                    getRandomBGFromFlickrSource();
+                }
+            }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex.Message);
+            }
+
+
+        }
+
+
+        private async void getRandomBGFromFlickrSource()
+        {
+            try
+            {
+            HttpClient client = new HttpClient();
+            string url = "http://api.flickr.com/services/rest/" +
+                "?method=flickr.groups.pools.getPhotos" +
+                "&api_key={0}" +
+                "&group_id=1463451%40N25" +
+                "&privacy_filter=1" +
+                "&format=json" +
+                "&nojsoncallback=1";
+
+            var baseUrl = string.Format(url,
+                flickrApiKey);
+
+            string flickrResult = await client.GetStringAsync(baseUrl);
+            Console.WriteLine(flickrResult);
+            //ResultTextBlock.Text = flickrResult;
+
+            FlickrData apiData = JsonConvert.DeserializeObject<FlickrData>(flickrResult);
+
+            if (apiData.stat == "ok")
+            {
+                if (apiData.photos.photo.Count > 0)
+                {
+                    Random r = new Random();
+                    int rInt = r.Next(0, apiData.photos.photo.Count);
+                    Photo data = apiData.photos.photo[rInt];
+
+                    string photoUrl = "http://farm{0}.staticflickr.com/{1}/{2}_{3}.jpg";
+                    Console.WriteLine(photoUrl);
+
+                    string baseFlickrUrl = string.Format(photoUrl,
+                        data.farm,
+                        data.server,
+                        data.id,
+                        data.secret);
+
+                    setPanormaBG(baseFlickrUrl);
+                    setStringToIsolatedStorage(panoramaBGTypeKey,panoramaRandomFromGroup);
 
                 }
             }
-
-            //AroundMeMap.SetView(new GeoCoordinate(41.8988D, -87.6231D), 17D);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex.Message);
+            }
 
 
         }
 
         private void setPanormaBG(string imgURL)
         {
-             ImageBrush b = new ImageBrush();
-                    b.ImageSource = new BitmapImage(new Uri(imgURL));
-                    b.Opacity = 0.70;
-                    b.Stretch = Stretch.Fill;
-                    weatherishPanorma.Background = b;
+             SaveImageToIsolatedStorage(imgURL, 1, "PanoramoBackgroundImage.jpg");  
+        }
+
+        private void setDownloadedImageAsPanoramaBG(Image image)
+        {
+            ImageBrush b = new ImageBrush();
+            b.ImageSource =image.Source;
+            b.Opacity = 0.70;
+            b.Stretch = Stretch.Fill;
+            weatherishPanorma.Background = b;
+        }
+
+        private void SaveImageToIsolatedStorage(string strPath, int flag, string fileName)
+        {
+            if (flag == 1)
+            {
+                // Use WebClient to download web server's images.
+                WebClient webClientImg = new WebClient();
+                webClientImg.OpenReadCompleted += new OpenReadCompletedEventHandler(client_OpenReadCompleted);
+                webClientImg.OpenReadAsync(new Uri(strPath, UriKind.Absolute));
+            }
+            else
+            {
+                // Use Uri to get local images.
+                StreamResourceInfo sri = null;
+                Uri uri = new Uri(strPath, UriKind.Relative);
+                sri = Application.GetResourceStream(uri);
+
+                // Save the local image's stream into a jpeg picture.
+                SaveToJpeg(sri.Stream,fileName);
+            }
+        }
+
+        private Image LoadImageFromIsolatedStorage(string strImageName)
+        {
+            // The image will be read from isolated storage into the following byte array
+            byte[] data;
+            Image image = new Image();
+
+            // Read the entire image in one go into a byte array
+            try
+            {
+                using (IsolatedStorageFile isf = IsolatedStorageFile.GetUserStoreForApplication())
+                {
+                    // Open the file - error handling omitted for brevity
+                    // Note: If the image does not exist in isolated storage the following exception will be generated:
+                    // System.IO.IsolatedStorage.IsolatedStorageException was unhandled 
+                    // Message=Operation not permitted on IsolatedStorageFileStream 
+                    using (IsolatedStorageFileStream isfs = isf.OpenFile(strImageName, FileMode.Open, FileAccess.Read))
+                    {
+                        // Allocate an array large enough for the entire file
+                        data = new byte[isfs.Length];
+
+                        // Read the entire file and then close it
+                        isfs.Read(data, 0, data.Length);
+                        isfs.Close();
+                    }
+                }
+
+                // Create memory stream and bitmap
+                MemoryStream ms = new MemoryStream(data);
+                BitmapImage bi = new BitmapImage();
+
+                // Set bitmap source to memory stream
+                bi.SetSource(ms);
+
+                // Create an image UI element – Note: this could be declared in the XAML instead
+
+                // Set size of image to bitmap size for this demonstration
+                image.Height = 480;
+                image.Width = 800;
+
+                // Assign the bitmap image to the image’s source
+                image.Source = bi;
+
+                // Add the image to the grid in order to display the bit map
+                return image;
+            }
+            catch (Exception e)
+            {
+                // handle the exception
+                Debug.WriteLine(e.Message);
+                return image;
+
+            }
+        }
+
+        private void SaveToJpeg(Stream stream,string strImageName)
+        {
+            using (IsolatedStorageFile iso = IsolatedStorageFile.GetUserStoreForApplication())
+            {
+                if (iso.FileExists(strImageName))
+                {
+                    iso.DeleteFile(strImageName);
+                }
+
+                using (IsolatedStorageFileStream isostream = iso.CreateFile(strImageName))
+                {
+                    BitmapImage bitmap = new BitmapImage();
+                    bitmap.SetSource(stream);
+                    WriteableBitmap wb = new WriteableBitmap(bitmap);
+
+                    // Encode WriteableBitmap object to a JPEG stream.
+                    Extensions.SaveJpeg(wb, isostream, 480,800, 0, 85);
+                    isostream.Close();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Save stream to jpeg when the asynchronous resource-read operation is completed.
+        /// </summary>
+        /// <param name="sender">WebClient</param>
+        /// <param name="e">OpenReadCompleted Event</param>
+        void client_OpenReadCompleted(object sender, OpenReadCompletedEventArgs e)
+        {
+            // Save the returned image stream into a jpeg picture.
+            SaveToJpeg(e.Result,"PanoramoBackgroundImage.jpg");
+            setDownloadedImageAsPanoramaBG(LoadImageFromIsolatedStorage("PanoramoBackgroundImage.jpg"));
         }
 
         private void textBoxLoaded(object sender, RoutedEventArgs e)
