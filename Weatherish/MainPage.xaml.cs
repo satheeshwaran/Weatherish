@@ -60,7 +60,6 @@ namespace Weatherish
         private string flickrApiKey = "8244c11a9c3b02b45c127873ac225958";
         private readonly TileHelper _tileHelper = new TileHelper();
         private bool _isLockScreenProvider;
-        private bool _agentsAreEnabled;
         private string firstTimeLoadFlag;
         private static string dailyWeatherDataKey = "dailyWeatherDataJSON";
         private static string weeklyWeatherDataKey = "weeklyWeatherDataJSON";
@@ -71,7 +70,6 @@ namespace Weatherish
         private const string panoramaBGLocationBased = "PanoramaLocationBased";
         private const string panoramaBGCountyBased = "PanoramaConutryBased";
         private const string panoramaRandomFromGroup = "PanoramaRandomBased";
-        private bool sampleDataLoaded = false;
         private bool oldDataLoaded = false;
 
         // Constructor
@@ -94,7 +92,6 @@ namespace Weatherish
                 if (!oldDataLoaded)
                   loadOldDataToScreen();
                 setFirstTime();
-                sampleDataLoaded = true;
             }
         }
 
@@ -269,7 +266,6 @@ namespace Weatherish
                             }
 
                             // Variable for tracking enabled status of background agents for this app.
-                            _agentsAreEnabled = false;
                         }
                         break;
                     case "check":
@@ -309,14 +305,10 @@ namespace Weatherish
         void MainPage_Loaded(object sender, RoutedEventArgs e)
         {
 
-            setUpSampleDataIfFirstTime();
+            //setUpSampleDataIfFirstTime();
             LockHelper(new Uri("", UriKind.RelativeOrAbsolute), "allow");
             StartPeriodicAgent();
             getUserLocation();
-
-            if (!oldDataLoaded)
-                loadOldDataToScreen();
-
             
         }
 
@@ -454,11 +446,10 @@ namespace Weatherish
 
             string apiData = JsonConvert.DeserializeObject(weatherAPIResult).ToString();
             RootObject apiDataJson = JsonConvert.DeserializeObject<RootObject>(apiData);
-            int temp = (int)apiDataJson.main.temp;
-            currentTemperatureBlock.Text = temp.ToString() + "°C ";
+            currentTemperatureBlock.Text = Math.Round(apiDataJson.main.temp,1).ToString() + "°C ";
             currentTemperatureCondtion.Text = apiDataJson.weather[0].description;
             hourlyForecastTextBlock.Text = DateTime.Now.ToString("MMM dd") + " Hourly Forecast";
-            currentTemperatureRangeBlock.Text = "Temp " + apiDataJson.main.temp_min.ToString() + "°~" + apiDataJson.main.temp_max.ToString() + "°";
+            currentTemperatureRangeBlock.Text = "Temp " + Math.Round(apiDataJson.main.temp_min,1).ToString() + "°~" + Math.Round(apiDataJson.main.temp_max,1).ToString() + "°";
             currentWindSpeedBlock.Text = apiDataJson.wind.speed.ToString() + " Kph";
             currentHumidityTextBlock.Text = apiDataJson.main.humidity.ToString() + "%";
 
@@ -549,6 +540,11 @@ namespace Weatherish
                         position.Coordinate.Longitude);
 
                 currentCoordinate = gpsCoorCenter;
+
+                if (!oldDataLoaded)
+                    loadOldDataToScreen();
+                
+
                 getCurrentPlaceAndWOEID();
                 getCurrentWeatherData();
                 getDailyForecastData();

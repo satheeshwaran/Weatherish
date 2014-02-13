@@ -54,12 +54,12 @@
                                     <RowDefinition Height="*"/>
                                 </Grid.RowDefinitions>
                                 <Image Source="/Assets/WeatherIcons/weather-clear@2x.png" Width="60" Height="60" Canvas.ZIndex="4" HorizontalAlignment="Left" Loaded="Image_Loaded"></Image>
-                                <TextBlock Name="currentTemperature"  Text="23°"
+                                <TextBlock Name="currentTemperature"  Text="23.4°C"
                                            Style="{StaticResource PanoramaItemHeaderTextStyle}"
-                                           Grid.Row="0" FontSize="48" Margin="80,0,0,0" Loaded="textBoxLoaded" Width="100" HorizontalAlignment="Left"  />
+                                           Grid.Row="0" FontSize="48" Margin="80,0,0,0" Loaded="textBoxLoaded" HorizontalAlignment="Left"  />
                                 <TextBlock Name="currentTemperatureCondtion"  Text="Clear"
                                            Style="{StaticResource PanoramaItemHeaderTextStyle}"
-                                           Grid.Row="0" FontSize="38" Margin="200,0,0,0" Loaded="currentTemperatureCondtion_Loaded" HorizontalAlignment="Left" VerticalAlignment="Bottom" Height="54" />
+                                           Grid.Row="0" FontSize="38" Margin="220,0,0,0" Loaded="currentTemperatureCondtion_Loaded" HorizontalAlignment="Left" VerticalAlignment="Bottom" Height="54" />
                                 <TextBlock Name="temperatureRangeBlock"
                                            Text="Temp 1.11°~6.11°"
                                            Style="{StaticResource PanoramaItemHeaderTextStyle}"

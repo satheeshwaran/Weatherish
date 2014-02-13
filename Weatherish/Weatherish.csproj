@@ -140,6 +140,9 @@
     <Content Include="Assets\SampleData\dailyWeather.txt" />
     <Content Include="Assets\SampleData\weeklyWeather.txt" />
     <Content Include="Assets\SampleData\WOESample.txt" />
+    <Content Include="Assets\storm-128.png" />
+    <Content Include="Assets\storm-256.png" />
+    <Content Include="Assets\storm-512.png" />
     <Content Include="Assets\WeatherIcons\temperature-32.png" />
     <Content Include="Assets\WeatherIcons\weather-broken%402x.png" />
     <Content Include="Assets\WeatherIcons\weather-broken.png" />

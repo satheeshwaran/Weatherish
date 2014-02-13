@@ -15,6 +15,9 @@ using Windows.Phone.System.UserProfile;
 using System.IO.IsolatedStorage;
 using System.Threading.Tasks;
 
+using System.IO;
+using System.Linq;
+
 namespace WeatherUpdaterAgent
 {
     public class ScheduledAgent : ScheduledTaskAgent
@@ -64,11 +67,37 @@ namespace WeatherUpdaterAgent
             //TODO: Add code to perform your task in background
             Deployment.Current.Dispatcher.BeginInvoke(async () =>
             {
+                loadIconicTileData();
                 await getLocation();
                 NotifyComplete();
             });
 
            
+        }
+
+        private void loadIconicTileData()
+        {
+            try
+            {
+                IconicTileData iconicTileData = new IconicTileData();
+                iconicTileData.WideContent1 = "";
+                iconicTileData.WideContent2 = "Test2";
+                iconicTileData.WideContent3 = "Test3";
+                iconicTileData.SmallIconImage = new Uri("/Assets/ApplicationIcon.png", UriKind.Relative);
+                iconicTileData.IconImage = new Uri("/Assets/ApplicationIcon.png", UriKind.Relative);
+
+                var mainTile = ShellTile.ActiveTiles.FirstOrDefault();
+
+                if (null != mainTile)
+                {
+                    mainTile.Update(iconicTileData);
+                }
+            }
+            catch (Exception e)
+            {
+
+            }
+
         }
 
         private async Task getLocation()
@@ -104,7 +133,9 @@ namespace WeatherUpdaterAgent
                     string apiData = JsonConvert.DeserializeObject(weatherAPIResult).ToString();
                     RootObject apiDataJson = JsonConvert.DeserializeObject<RootObject>(apiData);
                     int temp = (int)apiDataJson.main.temp;
-                    /*  currentTemperatureBlock.Text = temp.ToString() + "°C ";
+
+             
+                   /*   currentTemperatureBlock.Text = temp.ToString() + "°C ";
                       currentTemperatureCondtion.Text = apiDataJson.weather[0].description;
                       hourlyForecastTextBlock.Text = DateTime.Now.ToString("MMM dd") + " Hourly Forecast";
                       currentTemperatureRangeBlock.Text = "Temp   " + apiDataJson.main.temp_min.ToString() + "°~" + apiDataJson.main.temp_max.ToString() + "°";
@@ -116,8 +147,14 @@ namespace WeatherUpdaterAgent
 
                     Deployment.Current.Dispatcher.BeginInvoke(() =>
                     {
+                        var mainTile = ShellTile.ActiveTiles.FirstOrDefault();
 
-                        //I'm faking a weather image update and some text/image composition
+                        if (null != mainTile)
+                        {
+                            mainTile.Update(CreateIconicTileData(currentPlace, apiDataJson.weather[0].description, apiDataJson.weather[0].icon, apiDataJson.main.temp.ToString()));
+                        }
+
+                        
                         var lockBackgroundImage = new Image
                         {
                             Source = new BitmapImage(new Uri("/Assets/Background.jpg", UriKind.RelativeOrAbsolute)),
@@ -209,16 +246,14 @@ namespace WeatherUpdaterAgent
 
                         var toast = new ShellToast
                         {
-                            Title = "The Final Countdown",
-                            Content = "The lock screen was updated...",
+                            Title = "Weatherish",
+                            Content = "The lock screen was updated with new weather data",
                             NavigationUri = new Uri("/MainPage.xaml?agentLockscreen=1", UriKind.RelativeOrAbsolute)
                         };
 
                         toast.Show();
 
                     });
-
-                    //                TextBox foundTextBox = UIHelper.FindChild<TextBox>(longList, "currentTemperature");
 
                 }
                 catch (Exception ex)
@@ -232,7 +267,6 @@ namespace WeatherUpdaterAgent
                 if ((uint)ex.HResult == 0x80004004)
                 {
                     // the application does not have the right capability or the location master switch is off
-                    MessageBox.Show("location  is disabled in phone settings.");
                 }
                 //else
                 {
@@ -241,6 +275,7 @@ namespace WeatherUpdaterAgent
             }
 
         }
+
         private async Task getCurrentPlaceAndWOEID()
         {
             try
@@ -305,7 +340,17 @@ namespace WeatherUpdaterAgent
                 Debug.WriteLine(ex.Message);
             }
         }
-    
+
+        private ShellTileData CreateIconicTileData(string currentLocation,string weatherValue,string weatherIconValue, string weatherTemp)
+        {
+            IconicTileData iconincTile = new IconicTileData();
+            iconincTile.SmallIconImage = new Uri(getImageURLForWeatherIcon(weatherIconValue), UriKind.Relative);
+            iconincTile.WideContent1 = currentLocation;
+            iconincTile.WideContent2 = weatherTemp + "°C";
+            iconincTile.WideContent3 = weatherValue;
+
+            return iconincTile;
+        }
 
         public string getImageURLForWeatherIcon(string weatherIcon)
         {
