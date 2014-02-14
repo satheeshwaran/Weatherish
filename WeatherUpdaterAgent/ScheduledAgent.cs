@@ -53,6 +53,20 @@ namespace WeatherUpdaterAgent
             }
         }
 
+        private bool checkForLocationPermission()
+        {
+            try
+            {
+                if (!System.IO.IsolatedStorage.IsolatedStorageSettings.ApplicationSettings.Contains("EnableLocation"))
+                    return true;
+                else
+                    return (bool?)System.IO.IsolatedStorage.IsolatedStorageSettings.ApplicationSettings["EnableLocation"] ?? true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
         /// <summary>
         /// Agent that runs a scheduled task
         /// </summary>
@@ -67,7 +81,6 @@ namespace WeatherUpdaterAgent
             //TODO: Add code to perform your task in background
             Deployment.Current.Dispatcher.BeginInvoke(async () =>
             {
-                loadIconicTileData();
                 await getLocation();
                 NotifyComplete();
             });
@@ -75,202 +88,212 @@ namespace WeatherUpdaterAgent
            
         }
 
-        private void loadIconicTileData()
-        {
-            try
-            {
-                IconicTileData iconicTileData = new IconicTileData();
-                iconicTileData.WideContent1 = "";
-                iconicTileData.WideContent2 = "Test2";
-                iconicTileData.WideContent3 = "Test3";
-                iconicTileData.SmallIconImage = new Uri("/Assets/ApplicationIcon.png", UriKind.Relative);
-                iconicTileData.IconImage = new Uri("/Assets/ApplicationIcon.png", UriKind.Relative);
-
-                var mainTile = ShellTile.ActiveTiles.FirstOrDefault();
-
-                if (null != mainTile)
-                {
-                    mainTile.Update(iconicTileData);
-                }
-            }
-            catch (Exception e)
-            {
-
-            }
-
-        }
 
         private async Task getLocation()
         {
-            Geolocator geolocator = new Geolocator();
-            geolocator.DesiredAccuracyInMeters = 50;
-
-            try
+            if (checkForLocationPermission())
             {
-                Geoposition position =
-                    await geolocator.GetGeopositionAsync(
-                    TimeSpan.FromMinutes(1),
-                    TimeSpan.FromSeconds(30));
-
-                var gpsCoorCenter =
-                    new GeoCoordinate(
-                        position.Coordinate.Latitude,
-                        position.Coordinate.Longitude);
-
-                currentCoordinate = gpsCoorCenter;
-                
+                Geolocator geolocator = new Geolocator();
+                geolocator.DesiredAccuracyInMeters = 50;
 
                 try
                 {
-                
-                    await getCurrentPlaceAndWOEID();
-                HttpClient weatherClient = new HttpClient();
-                string weatherAPIURL = "http://api.openweathermap.org/data/2.5/weather?" + "lat=" + currentCoordinate.Latitude + "&lon=" + currentCoordinate.Longitude + "&units=metric";
-               // string weatherAPIURL = "http://api.openweathermap.org/data/2.5/weather?lat=35&lon=139&units=metric";
-                string weatherAPIResult = await weatherClient.GetStringAsync(weatherAPIURL);
-                Console.WriteLine(weatherAPIResult);
-               
-                    string apiData = JsonConvert.DeserializeObject(weatherAPIResult).ToString();
-                    RootObject apiDataJson = JsonConvert.DeserializeObject<RootObject>(apiData);
-                    int temp = (int)apiDataJson.main.temp;
+                    Geoposition position =
+                        await geolocator.GetGeopositionAsync(
+                        TimeSpan.FromMinutes(1),
+                        TimeSpan.FromSeconds(30));
 
-             
-                   /*   currentTemperatureBlock.Text = temp.ToString() + "°C ";
-                      currentTemperatureCondtion.Text = apiDataJson.weather[0].description;
-                      hourlyForecastTextBlock.Text = DateTime.Now.ToString("MMM dd") + " Hourly Forecast";
-                      currentTemperatureRangeBlock.Text = "Temp   " + apiDataJson.main.temp_min.ToString() + "°~" + apiDataJson.main.temp_max.ToString() + "°";
-                      currentWindSpeedBlock.Text = apiDataJson.wind.speed.ToString() + " Kph";
-                      currentHumidityTextBlock.Text = apiDataJson.main.humidity.ToString() + "%";
+                    var gpsCoorCenter =
+                        new GeoCoordinate(
+                            position.Coordinate.Latitude,
+                            position.Coordinate.Longitude);
 
-                      thisWeekForecastTitle.Text = ordinal(GetWeekOfMonth(DateTime.Now)) + " week of " + CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedMonthName(DateTime.Now.Month);
-                      */
+                    currentCoordinate = gpsCoorCenter;
 
-                    Deployment.Current.Dispatcher.BeginInvoke(() =>
+
+                    try
                     {
-                        var mainTile = ShellTile.ActiveTiles.FirstOrDefault();
 
-                        if (null != mainTile)
-                        {
-                            mainTile.Update(CreateIconicTileData(currentPlace, apiDataJson.weather[0].description, apiDataJson.weather[0].icon, apiDataJson.main.temp.ToString()));
-                        }
+                        await getCurrentPlaceAndWOEID();
+                        HttpClient weatherClient = new HttpClient();
+                        string weatherAPIURL = "http://api.openweathermap.org/data/2.5/weather?" + "lat=" + currentCoordinate.Latitude + "&lon=" + currentCoordinate.Longitude + "&units=metric";
+                        // string weatherAPIURL = "http://api.openweathermap.org/data/2.5/weather?lat=35&lon=139&units=metric";
+                        string weatherAPIResult = await weatherClient.GetStringAsync(weatherAPIURL);
+                        Console.WriteLine(weatherAPIResult);
 
-                        
-                        var lockBackgroundImage = new Image
-                        {
-                            Source = new BitmapImage(new Uri("/Assets/Background.jpg", UriKind.RelativeOrAbsolute)),
-                            Width = 480,
-                            Height = 800
-                        };
-
-                        var lockWeatherImage = new Image
-                        {
-                            Source = new BitmapImage(new Uri(getImageURLForWeatherIcon(apiDataJson.weather[0].icon), UriKind.Relative)),
-                            Width = 64,
-                            Height = 64
-                        };
-
-                        var lockTextBlock = new TextBlock
-                        {
-                            Text = (currentPlace.Length>0?currentPlace:apiDataJson.name) + Environment.NewLine + Math.Round(apiDataJson.main.temp,2) + "°C" + Environment.NewLine +
-                                    apiDataJson.weather[0].description,
-                            FontSize = 24,
-                            Foreground = new SolidColorBrush(Colors.White),
-                            FontFamily = new FontFamily("Segoe WP SemiLight")
-                        };
-
-                        string fileName;
-                        Uri currentImage;
+                        string apiData = JsonConvert.DeserializeObject(weatherAPIResult).ToString();
+                        RootObject apiDataJson = JsonConvert.DeserializeObject<RootObject>(apiData);
+                        int temp = (int)apiDataJson.main.temp;
 
                         try
-                        {
-                            currentImage = LockScreen.GetImageUri();
-                        }
-                        catch (Exception)
-                        {
-                            currentImage = new Uri("ms-appdata:///local/LiveLockBackground_A.jpg", UriKind.Absolute);
-                        }
-
-                        if (currentImage.ToString().EndsWith("_A.jpg"))
-                        {
-                            fileName = "LiveLockBackground_B.jpg";
-                        }
-                        else
-                        {
-                            fileName = "LiveLockBackground_A.jpg";
-                        }
-
-                        var lockImage = string.Format("{0}", fileName);
-                        var isoStoreLockImage = new Uri(string.Format("ms-appdata:///local/{0}", fileName), UriKind.Absolute);
-
-                        try
-                        {
-                        using (IsolatedStorageFile store = IsolatedStorageFile.GetUserStoreForApplication())
-                        {
-                            var stream = store.CreateFile(lockImage);
-
-                            var bitmap = new WriteableBitmap(480, 800);
-
-                            bitmap.Render(lockBackgroundImage, new TranslateTransform());
-
-                            bitmap.Render(lockWeatherImage, new TranslateTransform()
                             {
-                                X = 25,
-                                Y = 75
-                            });
 
-                            bitmap.Render(lockTextBlock, new TranslateTransform()
+                                IconicTileData iconicTileData = new IconicTileData();
+                                iconicTileData.Title = currentPlace;
+                                iconicTileData.WideContent1 = temp.ToString() + "°C";
+                                iconicTileData.WideContent2 = apiDataJson.weather[0].description;
+                                iconicTileData.WideContent3 = "Humidity " + apiDataJson.main.humidity.ToString() + "%";
+                                iconicTileData.SmallIconImage = new Uri(getImageURLForWeatherIconForTiles(apiDataJson.weather[0].icon, true), UriKind.Relative);
+                                iconicTileData.IconImage = new Uri(getImageURLForWeatherIconForTiles(apiDataJson.weather[0].icon, false), UriKind.Relative);
+
+                                var mainTile = ShellTile.ActiveTiles.FirstOrDefault();
+
+                                if (null != mainTile)
+                                {
+                                    mainTile.Update(iconicTileData);
+                                }
+                            }
+                            catch (Exception e)
                             {
-                                X = 25,
-                                Y = 150
-                            });
+                                Debug.WriteLine(e.Message);
+                            }
 
-                            bitmap.Invalidate();
-                            bitmap.SaveJpeg(stream, 480, 800, 0, 100);
+                        /*   currentTemperatureBlock.Text = temp.ToString() + "°C ";
+                           currentTemperatureCondtion.Text = apiDataJson.weather[0].description;
+                           hourlyForecastTextBlock.Text = DateTime.Now.ToString("MMM dd") + " Hourly Forecast";
+                           currentTemperatureRangeBlock.Text = "Temp   " + apiDataJson.main.temp_min.ToString() + "°~" + apiDataJson.main.temp_max.ToString() + "°";
+                           currentWindSpeedBlock.Text = apiDataJson.wind.speed.ToString() + " Kph";
+                           currentHumidityTextBlock.Text = apiDataJson.main.humidity.ToString() + "%";
 
-                            stream.Close();
+                           thisWeekForecastTitle.Text = ordinal(GetWeekOfMonth(DateTime.Now)) + " week of " + CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedMonthName(DateTime.Now.Month);
+                           */
 
-                        }
-                        }
-                        catch (Exception)
+                        Deployment.Current.Dispatcher.BeginInvoke(() =>
                         {
-                            currentImage = new Uri("ms-appdata:///local/LiveLockBackground_A.jpg", UriKind.Absolute);
-                        }
+                            var mainTile = ShellTile.ActiveTiles.FirstOrDefault();
+
+                            if (null != mainTile)
+                            {
+                               // mainTile.Update(CreateIconicTileData(currentPlace, apiDataJson.weather[0].description, apiDataJson.weather[0].icon, apiDataJson.main.temp.ToString()));
+                            }
 
 
-                        bool isProvider = LockScreenManager.IsProvidedByCurrentApplication;
-                        if (isProvider)
-                        {
-                            LockScreen.SetImageUri(isoStoreLockImage);
-                            System.Diagnostics.Debug.WriteLine("New current image set to {0}", isoStoreLockImage);
-                        }
+                            var lockBackgroundImage = new Image
+                            {
+                                Source = new BitmapImage(new Uri("/Assets/Background.jpg", UriKind.RelativeOrAbsolute)),
+                                Width = 480,
+                                Height = 800
+                            };
 
-                        var toast = new ShellToast
-                        {
-                            Title = "Weatherish",
-                            Content = "The lock screen was updated with new weather data",
-                            NavigationUri = new Uri("/MainPage.xaml?agentLockscreen=1", UriKind.RelativeOrAbsolute)
-                        };
+                            var lockWeatherImage = new Image
+                            {
+                                Source = new BitmapImage(new Uri(getImageURLForWeatherIcon(apiDataJson.weather[0].icon), UriKind.Relative)),
+                                Width = 64,
+                                Height = 64
+                            };
 
-                        toast.Show();
+                            var lockTextBlock = new TextBlock
+                            {
+                                Text = (currentPlace.Length > 0 ? currentPlace : apiDataJson.name) + Environment.NewLine + Math.Round(apiDataJson.main.temp, 2) + "°C" + Environment.NewLine +
+                                        apiDataJson.weather[0].description,
+                                FontSize = 24,
+                                Foreground = new SolidColorBrush(Colors.White),
+                                FontFamily = new FontFamily("Segoe WP SemiLight")
+                            };
 
-                    });
+                            string fileName;
+                            Uri currentImage;
+
+                            try
+                            {
+                                currentImage = LockScreen.GetImageUri();
+                            }
+                            catch (Exception)
+                            {
+                                currentImage = new Uri("ms-appdata:///local/LiveLockBackground_A.jpg", UriKind.Absolute);
+                            }
+
+                            if (currentImage.ToString().EndsWith("_A.jpg"))
+                            {
+                                fileName = "LiveLockBackground_B.jpg";
+                            }
+                            else
+                            {
+                                fileName = "LiveLockBackground_A.jpg";
+                            }
+
+                            var lockImage = string.Format("{0}", fileName);
+                            var isoStoreLockImage = new Uri(string.Format("ms-appdata:///local/{0}", fileName), UriKind.Absolute);
+                            Image lockScreenBG = LoadImageFromIsolatedStorage("PanoramoBackgroundImage.jpg");
+
+                            try
+                            {
+                                using (IsolatedStorageFile store = IsolatedStorageFile.GetUserStoreForApplication())
+                                {
+                                    var stream = store.CreateFile(lockImage);
+
+                                    var bitmap = new WriteableBitmap(480, 800);
+
+                                    if(lockScreenBG != null)
+                                        bitmap.Render(lockScreenBG, new TranslateTransform());
+                                    else
+                                        bitmap.Render(lockBackgroundImage, new TranslateTransform());
+
+                                    bitmap.Render(lockWeatherImage, new TranslateTransform()
+                                    {
+                                        X = 25,
+                                        Y = 75
+                                    });
+
+                                    bitmap.Render(lockTextBlock, new TranslateTransform()
+                                    {
+                                        X = 25,
+                                        Y = 150
+                                    });
+
+                                    bitmap.Invalidate();
+                                    bitmap.SaveJpeg(stream, 480, 800, 0, 100);
+
+                                    stream.Close();
+
+                                }
+                            }
+                            catch (Exception)
+                            {
+                                currentImage = new Uri("ms-appdata:///local/LiveLockBackground_A.jpg", UriKind.Absolute);
+                            }
+
+                            try
+                            {
+                                bool isProvider = LockScreenManager.IsProvidedByCurrentApplication;
+                                if (isProvider)
+                                {
+                                    LockScreen.SetImageUri(isoStoreLockImage);
+                                    System.Diagnostics.Debug.WriteLine("New current image set to {0}", isoStoreLockImage);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Debug.WriteLine(ex.Message);
+                            }
+                            /*var toast = new ShellToast
+                            {
+                                Title = "Weatherish",
+                                Content = "The lock screen was updated with new weather data",
+                                NavigationUri = new Uri("/MainPage.xaml?agentLockscreen=1", UriKind.RelativeOrAbsolute)
+                            };
+
+                            toast.Show();*/
+
+                        });
+
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine(ex.Message);
+                    }
 
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine(ex.Message);
-                }
-              
-            }
-            catch (Exception ex)
-            {
-                if ((uint)ex.HResult == 0x80004004)
-                {
-                    // the application does not have the right capability or the location master switch is off
-                }
-                //else
-                {
-                    // something else happened acquring the location
+                    if ((uint)ex.HResult == 0x80004004)
+                    {
+                        // the application does not have the right capability or the location master switch is off
+                    }
+                    //else
+                    {
+                        // something else happened acquring the location
+                    }
                 }
             }
 
@@ -380,8 +403,145 @@ namespace WeatherUpdaterAgent
             return localImageURL;
         }
 
-    }
+        public string getImageURLForWeatherIconForTiles(string weatherIcon,bool smallFlag)
+        {
+            string localImageURL = "";
+            if (weatherIcon.Equals("01d") || weatherIcon.Equals("01n"))
+            {
+                if(smallFlag)
+                      localImageURL = "/Assets/WeatherIcons/weather-clear.png";
+                 else
+                      localImageURL = "/Assets/WeatherIcons/weather-clear@2x.png";
+            }
+            else if (weatherIcon.Equals("02d"))
+            {
+                 if(smallFlag)
+                        localImageURL = "/Assets/WeatherIcons/weather-few.png";
+                 else
+                        localImageURL = "/Assets/WeatherIcons/weather-few@2x.png";
+            }
+            else if (weatherIcon.Equals("02n"))
+            {
+                  if(smallFlag)
+                       localImageURL = "/Assets/WeatherIcons/weather-few-night.png";
+                 else
+                       localImageURL = "/Assets/WeatherIcons/weather-few-night@2x.png";
+            }
+            else if (weatherIcon.Equals("03d") || weatherIcon.Equals("03n"))
+            {
+                  if(smallFlag)
+                        localImageURL = "/Assets/WeatherIcons/weather-scattered.png";
+                 else
+                        localImageURL = "/Assets/WeatherIcons/weather-scattered@2x.png";
 
+            }
+            else if (weatherIcon.Equals("04d") || weatherIcon.Equals("04n"))
+            {
+                  if(smallFlag)
+                        localImageURL = "/Assets/WeatherIcons/weather-broken.png";
+                 else
+                        localImageURL = "/Assets/WeatherIcons/weather-broken@2x.png";
+            }
+            else if (weatherIcon.Equals("09d") || weatherIcon.Equals("09n"))
+            {
+                  if(smallFlag)
+                        localImageURL = "/Assets/WeatherIcons/weather-shower.png";
+                 else
+                        localImageURL = "/Assets/WeatherIcons/weather-shower@2x.png";
+            }
+            else if (weatherIcon.Equals("10d"))
+            {
+                  if(smallFlag)
+                        localImageURL = "/Assets/WeatherIcons/weather-rain.png";
+                 else
+                        localImageURL = "/Assets/WeatherIcons/weather-rain@2x.png";
+            }
+            else if (weatherIcon.Equals("10n"))
+            {
+                  if(smallFlag)
+                        localImageURL = "/Assets/WeatherIcons/weather-night.png";
+                 else
+                        localImageURL = "/Assets/WeatherIcons/weather-night@2x.png";
+            }
+            else if (weatherIcon.Equals("11d") || weatherIcon.Equals("11n"))
+            {
+                  if(smallFlag)
+                        localImageURL = "/Assets/WeatherIcons/weather-tstorm.png";
+                 else
+                        localImageURL = "/Assets/WeatherIcons/weather-tstorm@2x.png";
+            }
+            else if (weatherIcon.Equals("13d") || weatherIcon.Equals("13n"))
+            {
+                  if(smallFlag)
+                        localImageURL = "/Assets/WeatherIcons/weather-snow.png";
+                 else
+                        localImageURL = "/Assets/WeatherIcons/weather-snow@2x.png";
+            }
+            else if (weatherIcon.Equals("50d") || weatherIcon.Equals("50n"))
+            {
+                  if(smallFlag)
+                        localImageURL = "/Assets/WeatherIcons/weather-mist.png";
+                 else
+                        localImageURL = "/Assets/WeatherIcons/weather-mist@2x.png";
+            }
+            return localImageURL;
+        }
+
+        private Image LoadImageFromIsolatedStorage(string strImageName)
+        {
+            // The image will be read from isolated storage into the following byte array
+            byte[] data;
+            Image image = new Image();
+
+            // Read the entire image in one go into a byte array
+            try
+            {
+                using (IsolatedStorageFile isf = IsolatedStorageFile.GetUserStoreForApplication())
+                {
+                    // Open the file - error handling omitted for brevity
+                    // Note: If the image does not exist in isolated storage the following exception will be generated:
+                    // System.IO.IsolatedStorage.IsolatedStorageException was unhandled 
+                    // Message=Operation not permitted on IsolatedStorageFileStream 
+                    using (IsolatedStorageFileStream isfs = isf.OpenFile(strImageName, FileMode.Open, FileAccess.Read))
+                    {
+                        // Allocate an array large enough for the entire file
+                        data = new byte[isfs.Length];
+
+                        // Read the entire file and then close it
+                        isfs.Read(data, 0, data.Length);
+                        isfs.Close();
+                    }
+                }
+
+                // Create memory stream and bitmap
+                MemoryStream ms = new MemoryStream(data);
+                BitmapImage bi = new BitmapImage();
+
+                // Set bitmap source to memory stream
+                bi.SetSource(ms);
+
+                // Create an image UI element – Note: this could be declared in the XAML instead
+
+                // Set size of image to bitmap size for this demonstration
+                image.Height = bi.PixelHeight;
+                image.Width = bi.PixelWidth;
+
+                // Assign the bitmap image to the image’s source
+                image.Source = bi;
+
+                // Add the image to the grid in order to display the bit map
+                return image;
+            }
+            catch (Exception e)
+            {
+                // handle the exception
+                Debug.WriteLine(e.Message);
+                return image;
+
+            }
+        }
+    }
+    
     public class Coord
     {
         public double lon { get; set; }

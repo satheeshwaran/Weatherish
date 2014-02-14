@@ -25,6 +25,8 @@ using Microsoft.Phone.Net.NetworkInformation;
 using System.Text;
 using Windows.Storage;
 using System.Threading.Tasks;
+using Coding4Fun.Toolkit;
+using Coding4Fun.Toolkit.Controls;
 
 namespace Weatherish
 {
@@ -36,7 +38,6 @@ namespace Weatherish
         ResourceIntensiveTask resourceIntensiveTask;
 
         string periodicTaskName = "WeatherUpdaterAgent";
-        string resourceIntensiveTaskName = "ResourceIntensiveAgent";
         public bool agentsAreEnabled = true;
 
         // Variables for our periodic task to update the lock screen
@@ -76,6 +77,9 @@ namespace Weatherish
         public MainPage()
         {
             InitializeComponent();
+            setUpApplicationBar();
+            ThemeManager.ToDarkTheme();
+
             if (!checkInternetConnection())
                 MessageBox.Show("Weatherish needs internet connectivity to load weather data, you may see sample or old data here.");
             
@@ -84,6 +88,43 @@ namespace Weatherish
 
         }
 
+
+         private void setUpApplicationBar()
+        {
+            ApplicationBar = new ApplicationBar();
+            ApplicationBar.Mode = ApplicationBarMode.Minimized;
+            ApplicationBar.Opacity = 1.0;
+            ApplicationBar.IsVisible = true;
+            ApplicationBar.IsMenuEnabled = true;
+
+            ApplicationBarMenuItem aboutMeMenu = new ApplicationBarMenuItem();
+
+            aboutMeMenu.Text = "About";
+
+            aboutMeMenu.Click += aboutMe_Click; ;
+
+            ApplicationBar.MenuItems.Add(aboutMeMenu);
+
+            ApplicationBarMenuItem menuItem = new ApplicationBarMenuItem();
+
+            menuItem.Text = "Settings";
+
+            menuItem.Click += menuItem_Click;
+
+            ApplicationBar.MenuItems.Add(menuItem);
+
+        }
+
+        void menuItem_Click(object sender, EventArgs e)
+        {
+            NavigationService.Navigate(new Uri("/Page1.xaml",UriKind.Relative));
+        }
+
+        void aboutMe_Click(object sender, EventArgs e)
+        {
+            AboutPrompt aboutPromt = new AboutPrompt();
+            aboutPromt.Show("Satheeshwaran", "satheeshwaran", "satmobdev@live.in", "satmobdev@live.in");
+        }
         private async void setUpSampleDataIfFirstTime()
         {
             if (checkFirstTime())
@@ -124,6 +165,21 @@ namespace Weatherish
             catch
             {
 
+            }
+        }
+
+        private bool checkForLocationPermission()
+        {
+            try
+            {
+                if (!System.IO.IsolatedStorage.IsolatedStorageSettings.ApplicationSettings.Contains("EnableLocation"))
+                    return true;
+                else
+                    return (bool?)System.IO.IsolatedStorage.IsolatedStorageSettings.ApplicationSettings["EnableLocation"] ?? true;
+            }
+            catch
+            {
+                return false;
             }
         }
 
@@ -289,17 +345,53 @@ namespace Weatherish
                 App.ViewModel.LoadData(dailyForecastData);
             }
 
+            if (IsolatedStorageSettings.ApplicationSettings.Contains("EnableLocation"))
+            {
+                //User already gave us his agreement for using his position
+                if ((bool)IsolatedStorageSettings.ApplicationSettings["EnableLocation"] == true)
 
+                    return;
+                //If he didn't we ask for it
+                else
+                {
+                    MessageBoxResult result =
+                                MessageBox.Show("Can Weatherish use your position? you can change it later in app settings",
+                                "Location",
+                                MessageBoxButton.OKCancel);
+
+                    if (result == MessageBoxResult.OK)
+                    {
+                        IsolatedStorageSettings.ApplicationSettings["EnableLocation"] = true;
+                    }
+                    else
+                    {
+                        IsolatedStorageSettings.ApplicationSettings["EnableLocation"] = false;
+                    }
+
+                    IsolatedStorageSettings.ApplicationSettings.Save();
+                }
+            }
+
+                //Ask for user agreement in using his position
+            else
+            {
+                MessageBoxResult result =
+                                MessageBox.Show("Can Weatherish use your position?, you can change it later in app settings",
+                            "Location",
+                            MessageBoxButton.OKCancel);
+
+                if (result == MessageBoxResult.OK)
+                {
+                    IsolatedStorageSettings.ApplicationSettings["EnableLocation"] = true;
+                }
+                else
+                {
+                    IsolatedStorageSettings.ApplicationSettings["EnableLocation"] = false;
+                }
+
+                IsolatedStorageSettings.ApplicationSettings.Save();
+            }
             periodicTask = ScheduledActionService.Find(periodicTaskName) as PeriodicTask;
-
-            if (periodicTask != null)
-            {
-            }
-
-            resourceIntensiveTask = ScheduledActionService.Find(periodicTaskName) as ResourceIntensiveTask;
-            if (resourceIntensiveTask != null)
-            {
-            }
 
         }
         void MainPage_Loaded(object sender, RoutedEventArgs e)
@@ -352,16 +444,12 @@ namespace Weatherish
 
             // The description is required for periodic agents. This is the string that the user
             // will see in the background services Settings page on the device.
-            periodicTask.Description = "This demonstrates a periodic task.";
+            periodicTask.Description = "Weatherish Lockscreen and Tile task";
 
             // Place the call to Add in a try block in case the user has disabled agents.
             try
             {
                 ScheduledActionService.Add(periodicTask);
-
-                // If debugging is enabled, use LaunchForTest to launch the agent in one minute.
-    ScheduledActionService.LaunchForTest(periodicTaskName, TimeSpan.FromSeconds(60));
-
             }
             catch (InvalidOperationException exception)
             {
@@ -524,46 +612,54 @@ namespace Weatherish
 
         private async void getUserLocation()
         {
-            Geolocator geolocator = new Geolocator();
-            geolocator.DesiredAccuracyInMeters = 50;
 
-            try
+            if (checkForLocationPermission())
             {
-                Geoposition position =
-                    await geolocator.GetGeopositionAsync(
-                    TimeSpan.FromMinutes(1),
-                    TimeSpan.FromSeconds(30));
+                Geolocator geolocator = new Geolocator();
+                geolocator.DesiredAccuracyInMeters = 50;
 
-                var gpsCoorCenter =
-                    new GeoCoordinate(
-                        position.Coordinate.Latitude,
-                        position.Coordinate.Longitude);
+                try
+                {
+                    Geoposition position =
+                        await geolocator.GetGeopositionAsync(
+                        TimeSpan.FromMinutes(1),
+                        TimeSpan.FromSeconds(30));
 
-                currentCoordinate = gpsCoorCenter;
+                    var gpsCoorCenter =
+                        new GeoCoordinate(
+                            position.Coordinate.Latitude,
+                            position.Coordinate.Longitude);
 
-                if (!oldDataLoaded)
-                    loadOldDataToScreen();
-                
+                    currentCoordinate = gpsCoorCenter;
 
-                getCurrentPlaceAndWOEID();
-                getCurrentWeatherData();
-                getDailyForecastData();
-                getWeeklyForecastData();
+                    if (!oldDataLoaded)
+                        loadOldDataToScreen();
 
+                    getCurrentPlaceAndWOEID();
+                    getCurrentWeatherData();
+                    getDailyForecastData();
+                    getWeeklyForecastData();
+
+                }
+                catch (Exception ex)
+                {
+                    if ((uint)ex.HResult == 0x80004004)
+                    {
+                        // the application does not have the right capability or the location master switch is off
+                        MessageBox.Show("location  is disabled in phone settings.");
+                    }
+                    //else
+                    {
+                        // something else happened acquring the location
+                    }
+                }
             }
-            catch (Exception ex)
+
+            else
             {
-                if ((uint)ex.HResult == 0x80004004)
-                {
-                    // the application does not have the right capability or the location master switch is off
-                    MessageBox.Show("location  is disabled in phone settings.");
-                }
-                //else
-                {
-                    // something else happened acquring the location
-                }
+                loadOldDataToScreen();
+                MessageBox.Show("Loaction has been disabled in the app's settings so you would see sample or old data, Weatherish needs location to be enabled both in phone settings and in the app settings.");
             }
-
         }
         private async void getCurrentPlaceAndWOEID()
         {
@@ -915,7 +1011,7 @@ namespace Weatherish
             ImageBrush b = new ImageBrush();
             b.ImageSource =image.Source;
             b.Opacity = 0.70;
-            b.Stretch = Stretch.Fill;
+            b.Stretch = Stretch.UniformToFill;
             weatherishPanorma.Background = b;
         }
 
@@ -976,8 +1072,8 @@ namespace Weatherish
                 // Create an image UI element – Note: this could be declared in the XAML instead
 
                 // Set size of image to bitmap size for this demonstration
-                image.Height = 480;
-                image.Width = 800;
+                image.Height = bi.PixelHeight;
+                image.Width = bi.PixelWidth;
 
                 // Assign the bitmap image to the image’s source
                 image.Source = bi;
